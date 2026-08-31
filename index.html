@@ -211,6 +211,19 @@
         <!-- Rendered dynamically via JavaScript -->
       </div>
 
+      <!-- Loading Progress Popup for Large Music Libraries -->
+      <div class="loading-progress-popup" id="loadingProgressPopup" role="status" aria-live="polite">
+        <div class="loading-progress-info">
+          <div class="loading-progress-text-row">
+            <span class="loading-progress-title">Loading music...</span>
+            <span class="loading-progress-count" id="loadingProgressCount">0 songs remaining</span>
+          </div>
+          <div class="loading-progress-track">
+            <div class="loading-progress-fill" id="loadingProgressBarFill" style="width: 0%;"></div>
+          </div>
+        </div>
+      </div>
+
       <!-- Mobile Compact Now Playing Pop-up (IMAGE 3) -->
       <div class="mobile-compact-popup" id="mobileCompactPopup" role="region" aria-label="Now Playing Compact Control">
         <div class="mobile-popup-cover-wrapper" id="mobilePopupCoverWrapper">

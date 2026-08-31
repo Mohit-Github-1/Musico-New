@@ -42,6 +42,69 @@ document.addEventListener('DOMContentLoaded', async () => {
   const contextMenu = document.getElementById('songContextMenu');
   const toastMessage = document.getElementById('toastMessage');
 
+  // Loading Progress Popup Elements
+  const loadingProgressPopup = document.getElementById('loadingProgressPopup');
+  const loadingProgressCount = document.getElementById('loadingProgressCount');
+  const loadingProgressBarFill = document.getElementById('loadingProgressBarFill');
+
+  /**
+   * Display and update the Loading Progress Popup
+   * Communicates actual progress with remaining count and percentage fill
+   */
+  function showLoadingProgress(remaining, percent) {
+    if (!loadingProgressPopup) return;
+    loadingProgressPopup.classList.add('visible');
+    if (loadingProgressCount) {
+      loadingProgressCount.textContent = `${remaining} song${remaining === 1 ? '' : 's'} remaining`;
+    }
+    if (loadingProgressBarFill) {
+      loadingProgressBarFill.style.width = `${Math.min(100, Math.max(0, percent))}%`;
+    }
+  }
+
+  /**
+   * Automatically hide Loading Progress Popup after completion
+   */
+  function hideLoadingProgress() {
+    if (!loadingProgressPopup) return;
+    if (loadingProgressBarFill) {
+      loadingProgressBarFill.style.width = '100%';
+    }
+    if (loadingProgressCount) {
+      loadingProgressCount.textContent = '0 songs remaining';
+    }
+    setTimeout(() => {
+      loadingProgressPopup.classList.remove('visible');
+      setTimeout(() => {
+        if (loadingProgressBarFill) loadingProgressBarFill.style.width = '0%';
+      }, 300);
+    }, 450);
+  }
+
+  /**
+   * High-speed in-place DOM metadata updater for large libraries
+   * Updates song cards directly without re-rendering or resetting scroll position
+   */
+  function updateVisibleSongCardMetadata(updatedTracks) {
+    if (!songsListContainer || !updatedTracks || updatedTracks.length === 0) return;
+    for (let i = 0; i < updatedTracks.length; i++) {
+      const track = updatedTracks[i];
+      const card = songsListContainer.querySelector(`.song-card[data-id="${track.id}"]`);
+      if (card) {
+        const titleElem = card.querySelector('.song-title');
+        const artistElem = card.querySelector('.song-artist');
+        const thumbElem = card.querySelector('.song-thumb');
+
+        if (titleElem && track.title) titleElem.textContent = track.title;
+        if (artistElem && track.artist) artistElem.textContent = `//${track.artist}`;
+        if (thumbElem && track.hasEmbeddedCover && track.coverUrl) {
+          thumbElem.src = track.coverUrl;
+          thumbElem.classList.remove('fallback-logo');
+        }
+      }
+    }
+  }
+
   // Initialize Library from IndexedDB
   async function initLibrary() {
     const savedTracks = await fileManager.loadStoredTracks();
@@ -117,7 +180,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         <div class="song-card ${isCurrent ? 'active' : ''} ${isPlaying ? 'playing' : ''}" data-id="${track.id}" data-index="${idx}">
           <div class="song-card-left">
             <div class="song-thumb-wrapper">
-              <img src="${coverSrc}" alt="${escapeHtml(track.title)}" class="song-thumb ${isFallback ? 'fallback-logo' : ''}" onerror="this.onerror=null;this.src='assets/M logo for music items.png';this.className='song-thumb fallback-logo';" />
+              <img src="${coverSrc}" alt="${escapeHtml(track.title)}" class="song-thumb ${isFallback ? 'fallback-logo' : ''}" loading="lazy" onerror="this.onerror=null;this.src='assets/M logo for music items.png';this.className='song-thumb fallback-logo';" />
               <div class="song-play-overlay">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
                   <polygon points="5 3 19 12 5 21 5 3"></polygon>
@@ -136,10 +199,23 @@ document.addEventListener('DOMContentLoaded', async () => {
       `;
     }).join('');
 
-    // Attach click listeners to song cards
-    songsListContainer.querySelectorAll('.song-card').forEach(card => {
-      card.addEventListener('click', (e) => {
-        if (e.target.closest('.song-options-btn')) return;
+    // Update custom mobile scrollbar position
+    requestAnimationFrame(updateMobileScrollbarThumb);
+  }
+
+  // Delegated Event Listener for song cards & option buttons (High efficiency for 1,000–3,000+ items)
+  if (songsListContainer) {
+    songsListContainer.addEventListener('click', (e) => {
+      const optionsBtn = e.target.closest('.song-options-btn');
+      if (optionsBtn) {
+        e.stopPropagation();
+        const trackId = optionsBtn.dataset.id;
+        showContextMenu(e, trackId);
+        return;
+      }
+
+      const card = e.target.closest('.song-card');
+      if (card) {
         const trackId = card.dataset.id;
         const targetTrackIndex = allTracks.findIndex(t => t.id === trackId);
         if (targetTrackIndex !== -1) {
@@ -149,20 +225,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             player.setQueue(allTracks, targetTrackIndex, true);
           }
         }
-      });
+      }
     });
-
-    // Attach listeners to three-dots option buttons
-    songsListContainer.querySelectorAll('.song-options-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const trackId = btn.dataset.id;
-        showContextMenu(e, trackId);
-      });
-    });
-
-    // Update custom mobile scrollbar position
-    requestAnimationFrame(updateMobileScrollbarThumb);
   }
 
   // Show Toast notification
@@ -175,19 +239,54 @@ document.addEventListener('DOMContentLoaded', async () => {
     }, 3000);
   }
 
-  // Handle Adding Music folder or files from local storage
+  // Handle Adding Music folder or files from local storage with Progressive Loading
   async function handleAddMusic() {
-    showToast('Selecting music folder or files...');
     try {
-      const newTracks = await fileManager.selectDirectory();
-      if (newTracks && newTracks.length > 0) {
+      let initialRendered = false;
+
+      const newTracks = await fileManager.selectDirectory({
+        onScanStart: () => {
+          showLoadingProgress(0, 0);
+        },
+        onInitialTracksReady: (initialBatch) => {
+          if (initialBatch && initialBatch.length > 0) {
+            allTracks = [...initialBatch, ...allTracks];
+            renderSongList();
+            initialRendered = true;
+
+            // Prepare first track if queue is empty
+            if (!player.currentTrack && allTracks.length > 0) {
+              player.setQueue(allTracks, 0, false);
+            }
+          }
+        },
+        onProgress: ({ processed, total, remaining, percent }) => {
+          showLoadingProgress(remaining, percent);
+        },
+        onBatchMetadataUpdated: (updatedChunk) => {
+          updateVisibleSongCardMetadata(updatedChunk);
+          // If the currently restored/playing song had its metadata updated, refresh Now Playing UI
+          if (player.currentTrack && updatedChunk.some(t => t.id === player.currentTrack.id)) {
+            player.updateNowPlayingUI();
+          }
+        }
+      });
+
+      hideLoadingProgress();
+
+      if (!initialRendered && newTracks && newTracks.length > 0) {
         allTracks = [...newTracks, ...allTracks];
         renderSongList();
+        if (!player.currentTrack && allTracks.length > 0) {
+          player.setQueue(allTracks, 0, false);
+        }
+      }
+
+      if (newTracks && newTracks.length > 0) {
         showToast(`Imported ${newTracks.length} song${newTracks.length > 1 ? 's' : ''}!`);
-        // Prepare first track without autoplay (plays only upon user action - FIX 3)
-        player.setQueue(allTracks, 0, false);
       }
     } catch (err) {
+      hideLoadingProgress();
       console.warn('Folder selection canceled or error:', err);
     }
   }
@@ -695,14 +794,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     const trackHeight = mobileScrollbarTrack.clientHeight;
 
     if (maxScroll <= 0 || trackHeight <= 0) {
-      mobileScrollbarThumb.style.height = `${Math.min(32, Math.max(20, trackHeight * 0.22))}px`;
+      mobileScrollbarThumb.style.height = `${Math.round(Math.min(58, Math.max(36, trackHeight * 0.22 * 1.8)))}px`;
       mobileScrollbarThumb.style.top = '2px';
       return;
     }
 
-    // Shorter thumb height (less than half of previous size, compact as in Figma)
+    // Thumb height scaled by 1.8x
     const visibleRatio = songsListContainer.clientHeight / songsListContainer.scrollHeight;
-    const thumbHeight = Math.max(20, Math.min(trackHeight * 0.28, Math.max(24, visibleRatio * trackHeight * 0.32)));
+    const baseThumbHeight = Math.max(20, Math.min(trackHeight * 0.28, Math.max(24, visibleRatio * trackHeight * 0.32)));
+    const thumbHeight = Math.round(baseThumbHeight * 1.8);
     mobileScrollbarThumb.style.height = `${thumbHeight}px`;
 
     const maxTop = Math.max(0, trackHeight - thumbHeight - 4);
@@ -715,7 +815,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!mobileScrollbarTrack || !songsListContainer) return;
     const rect = mobileScrollbarTrack.getBoundingClientRect();
     const trackHeight = rect.height;
-    const thumbHeight = mobileScrollbarThumb ? mobileScrollbarThumb.clientHeight : 28;
+    const thumbHeight = mobileScrollbarThumb ? mobileScrollbarThumb.clientHeight : 50;
     const maxTop = Math.max(1, trackHeight - thumbHeight - 4);
     
     // Position relative to track top, center thumb under finger

@@ -1590,7 +1590,7 @@ body.drag-over::after {
     position: absolute;
     left: 2px;
     width: calc(100% - 4px);
-    min-height: 20px;
+    min-height: 36px;
     background-color: #383838;
     border: none !important;
     outline: none !important;
@@ -3074,4 +3074,124 @@ body[data-theme="dark"] .context-item.delete {
   .library-section .songs-list .song-card .song-artist {
     font-size: 11px;
   }
+}
+
+/* ==========================================================================
+   LOADING PROGRESS POPUP (Large Library Progressive Loading Indicator)
+   ========================================================================== */
+.loading-progress-popup {
+  display: flex;
+  align-items: center;
+  position: fixed;
+  z-index: 55;
+  background-color: #FFFFFF;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+  padding: 12px 18px;
+  transition: opacity 0.3s cubic-bezier(0.2, 0.9, 0.2, 1), transform 0.3s cubic-bezier(0.2, 0.9, 0.2, 1);
+  opacity: 0;
+  transform: translateY(14px) scale(0.96);
+  pointer-events: none;
+}
+
+.loading-progress-popup.visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+.loading-progress-info {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.loading-progress-text-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.loading-progress-title {
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #000000;
+  letter-spacing: -0.2px;
+}
+
+.loading-progress-count {
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: #666666;
+  white-space: nowrap;
+}
+
+.loading-progress-track {
+  width: 100%;
+  height: 6px;
+  background-color: #EBEBEB;
+  border-radius: 999px;
+  overflow: hidden;
+  position: relative;
+}
+
+.loading-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #000000, #333333);
+  border-radius: 999px;
+  width: 0%;
+  transition: width 0.18s ease-out;
+}
+
+/* PC Positioning */
+@media (min-width: 901px) {
+  .loading-progress-popup {
+    bottom: 28px;
+    right: 28px;
+    width: 320px;
+  }
+}
+
+/* Mobile Positioning - ABOVE Now Playing popup without overlapping */
+@media (max-width: 900px) {
+  .loading-progress-popup {
+    left: 14px;
+    right: 14px;
+    bottom: calc(72px + 62px + 12px); /* Bottom Nav (72px) + Now Playing Popup (62px) + 12px margin */
+  }
+}
+
+@media (max-width: 900px) and (max-height: 680px) {
+  .loading-progress-popup {
+    bottom: calc(56px + 52px + 10px);
+    padding: 10px 14px;
+  }
+}
+
+/* Dark Mode Theme */
+body[data-theme="dark"] .loading-progress-popup {
+  background-color: #1A1A1A;
+  border: 1px solid #2C2C2E;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.7);
+}
+
+body[data-theme="dark"] .loading-progress-title {
+  color: #FFFFFF;
+}
+
+body[data-theme="dark"] .loading-progress-count {
+  color: #999999;
+}
+
+body[data-theme="dark"] .loading-progress-track {
+  background-color: #282828;
+}
+
+body[data-theme="dark"] .loading-progress-fill {
+  background: linear-gradient(90deg, #FFFFFF, #B0B0B0);
 }
