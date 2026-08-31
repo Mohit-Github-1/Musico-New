@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   let isGridView = false;
   let currentView = 'all_songs';
   let searchQuery = '';
+  let currentTheme = localStorage.getItem('musico-theme') || 'light';
 
   // DOM Elements
   const songsListContainer = document.getElementById('songsListContainer');
@@ -119,7 +120,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             </div>
           </div>
           <button class="song-options-btn" data-id="${track.id}" aria-label="Song options" title="Options">
-            <img src="assets/OptionsThreeDots.svg" alt="Options" class="options-icon" />
+            <img src="${currentTheme === 'dark' ? 'assets/Dark Mode/DarkModeOptionsbtn.svg' : 'assets/OptionsThreeDots.svg'}" alt="Options" class="options-icon" />
           </button>
         </div>
       `;
@@ -836,16 +837,75 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  // Settings Modal
-  if (settingsBtn && settingsModal) {
-    settingsBtn.addEventListener('click', () => {
-      settingsModal.classList.add('open');
-    });
-  }
+  // Settings Modal (Desktop & Mobile Side Button)
+  const allSettingsBtns = [settingsBtn, document.getElementById('mobileSideSettingsBtn')];
+  allSettingsBtns.forEach(btn => {
+    if (btn && settingsModal) {
+      btn.addEventListener('click', () => {
+        settingsModal.classList.add('open');
+      });
+    }
+  });
 
   if (closeSettingsBtn && settingsModal) {
     closeSettingsBtn.addEventListener('click', () => {
       settingsModal.classList.remove('open');
+    });
+  }
+
+  // Theme Switching Logic
+  function applyTheme(theme) {
+    currentTheme = theme === 'dark' ? 'dark' : 'light';
+    document.body.setAttribute('data-theme', currentTheme);
+    localStorage.setItem('musico-theme', currentTheme);
+
+    const themeLightBtn = document.getElementById('themeLightBtn');
+    const themeDarkBtn = document.getElementById('themeDarkBtn');
+    if (themeLightBtn) themeLightBtn.classList.toggle('active', currentTheme === 'light');
+    if (themeDarkBtn) themeDarkBtn.classList.toggle('active', currentTheme === 'dark');
+
+    const isDark = currentTheme === 'dark';
+
+    // Update Search icons
+    document.querySelectorAll('#searchBtn img, #mobileSearchBtn img').forEach(img => {
+      img.src = isDark ? 'assets/Dark Mode/DarkModeSearchIcon.png' : 'assets/Search.png';
+    });
+
+    // Update Settings icon in desktop header
+    document.querySelectorAll('#settingsBtn img').forEach(img => {
+      img.src = isDark ? 'assets/Dark Mode/DarkModeSettings.png' : 'assets/Settings.png';
+    });
+
+    // Update Now Playing cover 3-dots
+    document.querySelectorAll('#nowPlayingOptionsBtn img, #mobileFullOptionsBtn img').forEach(img => {
+      img.src = isDark ? 'assets/Dark Mode/DarkModeOptions 3 Dots.svg' : 'assets/Options 3 Dots.svg';
+    });
+
+    // Update Prev buttons
+    document.querySelectorAll('#prevBtn img, #mobileFullPrevBtn img, #mobilePopupPrevBtn img').forEach(img => {
+      img.src = isDark ? 'assets/Dark Mode/DarkModePrevBtn.svg' : 'assets/Prevbtn.svg';
+    });
+
+    // Update Next buttons
+    document.querySelectorAll('#nextBtn img, #mobileFullNextBtn img, #mobilePopupNextBtn img').forEach(img => {
+      img.src = isDark ? 'assets/Dark Mode/DarkModeNxtBtn.svg' : 'assets/Nxtbtn.svg';
+    });
+
+    renderSongList();
+  }
+
+  const themeLightBtn = document.getElementById('themeLightBtn');
+  const themeDarkBtn = document.getElementById('themeDarkBtn');
+  if (themeLightBtn) {
+    themeLightBtn.addEventListener('click', () => {
+      applyTheme('light');
+      showToast('Switched to Light Mode');
+    });
+  }
+  if (themeDarkBtn) {
+    themeDarkBtn.addEventListener('click', () => {
+      applyTheme('dark');
+      showToast('Switched to Dark Mode');
     });
   }
 
@@ -1043,6 +1103,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // Start app
+  applyTheme(currentTheme);
   await initLibrary();
 
   // Register PWA Service Worker for Offline / Standalone Installation
