@@ -1,8 +1,8 @@
 /**
- * Musico - PWA Offline Service Worker
+ * Musico - PWA Offline Service Worker (v7)
  */
 
-const CACHE_NAME = 'musico-cache-v5';
+const CACHE_NAME = 'musico-cache-v7';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -12,11 +12,11 @@ const STATIC_ASSETS = [
   './js/player.js',
   './js/fileManager.js',
   './js/id3Parser.js',
-  './assets/app icon main.png',
-  './assets/App Icon Main for Mobile Only.png',
+  './assets/app%20icon%20main.png',
+  './assets/App%20Icon%20Main%20for%20Mobile%20Only.png',
   './assets/Mlogo.png',
   './assets/Mlogowithbg.png',
-  './assets/M logo for music items.png',
+  './assets/M%20logo%20for%20music%20items.png',
   './assets/Addbtn.png',
   './assets/HomeMenuItem.png',
   './assets/PlaylistMenuItem.png',
@@ -30,15 +30,13 @@ const STATIC_ASSETS = [
   './assets/Plausebtn.svg',
   './assets/Nxtbtn.svg',
   './assets/OptionsThreeDots.svg',
-  './assets/Options 3 Dots.svg',
-  './assets/Dark Mode/DarkModeNxtBtn.svg',
-  './assets/Dark Mode/DarkModeOptions 3 Dots.svg',
-  './assets/Dark Mode/DarkModeOptionsbtn.svg',
-  './assets/Dark Mode/DarkModePauseBtn.svg',
-  './assets/Dark Mode/DarkModePrevBtn.svg',
-  './assets/Dark Mode/DarkModeSearchIcon.png',
-  './assets/Dark Mode/DarkModeSettings.png',
-  './assets/Dark Mode/DarkModeThreeDots.png',
+  './assets/Dark%20Mode/DarkModeNxtBtn.svg',
+  './assets/Dark%20Mode/DarkModeOptionsbtn.svg',
+  './assets/Dark%20Mode/DarkModePauseBtn.svg',
+  './assets/Dark%20Mode/DarkModePrevBtn.svg',
+  './assets/Dark%20Mode/DarkModeSearchIcon.png',
+  './assets/Dark%20Mode/DarkModeSettings.png',
+  './assets/Dark%20Mode/DarkModeThreeDots.png',
   './assets/icons/icon-72.png',
   './assets/icons/icon-96.png',
   './assets/icons/icon-128.png',
@@ -51,13 +49,13 @@ const STATIC_ASSETS = [
   './assets/icons/icon-maskable-512.png'
 ];
 
-// Install Event - Cache Core Assets
+// Install Event - Pre-cache core assets safely
 self.addEventListener('install', (e) => {
   e.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS).catch((err) => {
-        console.warn('Some assets could not be pre-cached:', err);
-      });
+    caches.open(CACHE_NAME).then(async (cache) => {
+      await Promise.allSettled(
+        STATIC_ASSETS.map((url) => cache.add(url))
+      );
     }).then(() => self.skipWaiting())
   );
 });
@@ -87,7 +85,7 @@ self.addEventListener('fetch', (e) => {
   e.respondWith(
     caches.match(e.request).then((cachedResponse) => {
       if (cachedResponse) {
-        // Fetch fresh copy in background
+        // Background refresh
         fetch(e.request).then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
             caches.open(CACHE_NAME).then((cache) => cache.put(e.request, networkResponse));
@@ -106,7 +104,6 @@ self.addEventListener('fetch', (e) => {
         return networkResponse;
       });
     }).catch(() => {
-      // Offline fallback
       return caches.match('./index.html');
     })
   );

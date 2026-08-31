@@ -1,6 +1,7 @@
 /**
  * Musico - File Manager & Local Storage (IndexedDB)
  * High-Speed, Virtualization-Ready, and Alphabetically Sorted (Special -> Numbers -> A-Z)
+ * Mobile-Optimized: Memory-safe file selection and non-blocking streaming.
  */
 
 class FileManager {
@@ -79,7 +80,10 @@ class FileManager {
    * @param {Object} options Optional callbacks: onScanStart, onInitialTracksReady, onProgress, onBatchMetadataUpdated
    */
   async selectDirectory(options = {}) {
-    if ('showDirectoryPicker' in window) {
+    const isMobile = window.innerWidth <= 900 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    
+    // On PC: Use modern showDirectoryPicker if available
+    if (!isMobile && 'showDirectoryPicker' in window) {
       try {
         if (options.onScanStart) options.onScanStart();
         const dirHandle = await window.showDirectoryPicker({ mode: 'read' });
@@ -92,12 +96,13 @@ class FileManager {
         return this.triggerDirectoryInput(options);
       }
     } else {
+      // On Mobile / Android: Use memory-safe audio file input
       return this.triggerDirectoryInput(options);
     }
   }
 
   /**
-   * Recursively scan FileSystemDirectoryHandle
+   * Recursively scan FileSystemDirectoryHandle (PC)
    */
   async scanDirectoryHandle(dirHandle, fileList) {
     const audioExtensions = /\.(mp3|wav|ogg|flac|m4a|aac|opus|weba|webm)$/i;
@@ -120,20 +125,26 @@ class FileManager {
   }
 
   /**
-   * Fallback: Trigger input file with webkitdirectory
+   * Fallback & Mobile Input: Trigger memory-safe file selection
    */
   triggerDirectoryInput(options = {}) {
     return new Promise((resolve) => {
-      const input = document.getElementById('folderPickerInput') || document.createElement('input');
+      const isMobile = window.innerWidth <= 900 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      const input = document.createElement('input');
       input.type = 'file';
-      input.webkitdirectory = true;
-      input.directory = true;
+      
+      // Only attach webkitdirectory on Desktop browsers
+      if (!isMobile) {
+        input.webkitdirectory = true;
+        input.directory = true;
+      }
       input.multiple = true;
-      input.accept = 'audio/*';
+      input.accept = 'audio/*, .mp3, .wav, .flac, .m4a, .aac, .ogg, .opus, .weba, .webm';
 
       input.onchange = async (e) => {
         if (options.onScanStart) options.onScanStart();
-        const files = Array.from(e.target.files).filter(f => 
+        const rawFiles = e.target.files ? Array.from(e.target.files) : [];
+        const files = rawFiles.filter(f => 
           /\.(mp3|wav|ogg|flac|m4a|aac|opus|weba|webm)$/i.test(f.name) || f.type.startsWith('audio/')
         );
         const tracks = await this.processAudioFiles(files, options);
@@ -141,6 +152,38 @@ class FileManager {
       };
 
       input.click();
+    });
+  }
+
+  /**
+   * Fast lightweight key lookup to avoid reading large Blobs into RAM during scan
+   */
+  async getExistingTrackKeys() {
+    if (!this.db) await this.initDB();
+    if (!this.db) return new Map();
+
+    return new Promise((resolve) => {
+      try {
+        const tx = this.db.transaction('tracks', 'readonly');
+        const store = tx.objectStore('tracks');
+        const req = store.openCursor();
+        const map = new Map();
+
+        req.onsuccess = (e) => {
+          const cursor = e.target.result;
+          if (cursor) {
+            const val = cursor.value;
+            const key = `${val.fileBlob?.name || val.title}_${val.fileBlob?.size || 0}`;
+            map.set(key, val);
+            cursor.continue();
+          } else {
+            resolve(map);
+          }
+        };
+        req.onerror = () => resolve(new Map());
+      } catch (e) {
+        resolve(new Map());
+      }
     });
   }
 
@@ -158,15 +201,8 @@ class FileManager {
     const initialTracks = [];
     const timestamp = Date.now();
 
-    // 1. Build fast lookup map from already cached IndexedDB tracks
-    const existingTracks = await this.loadStoredTracks();
-    const existingMap = new Map();
-    for (let i = 0; i < existingTracks.length; i++) {
-      const et = existingTracks[i];
-      const key = `${et.fileBlob?.name || et.title}_${et.fileBlob?.size || 0}`;
-      existingMap.set(key, et);
-    }
-
+    // 1. Build fast lookup map without loading heavy audio data
+    const existingMap = await this.getExistingTrackKeys();
     const unparsedTracks = [];
 
     // Phase 1: Rapid track generation & smart reuse (<30ms)
@@ -226,10 +262,10 @@ class FileManager {
       options.onInitialTracksReady(initialTracks);
     }
 
-    // Phase 2: Prioritize visible tracks, then process remaining in parallel batches
+    // Phase 2: Prioritize visible tracks, then process remaining in controlled batches
     const isMobile = window.innerWidth <= 900 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    const BATCH_SIZE = isMobile ? 12 : 24;
-    const DB_BATCH_SIZE = isMobile ? 40 : 80;
+    const BATCH_SIZE = isMobile ? 6 : 24;
+    const DB_BATCH_SIZE = isMobile ? 25 : 80;
 
     let processedCount = total - unparsedTracks.length;
     let pendingDBSave = [];
@@ -287,8 +323,8 @@ class FileManager {
         pendingDBSave = [];
       }
 
-      // Micro-task yield to main thread so animations and scrolling stay 60fps
-      await new Promise(r => setTimeout(r, 0));
+      // Micro-task yield to main thread so animations and scrolling stay fluid
+      await new Promise(r => setTimeout(r, isMobile ? 15 : 0));
     }
 
     if (pendingDBSave.length > 0) {

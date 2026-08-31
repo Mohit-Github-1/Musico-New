@@ -1308,10 +1308,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Register PWA Service Worker for Offline / Standalone Installation
   if ('serviceWorker' in navigator && (window.location.protocol === 'http:' || window.location.protocol === 'https:')) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js').catch(err => {
+    const registerServiceWorker = () => {
+      navigator.serviceWorker.register('./sw.js', { scope: './' }).catch(err => {
         console.warn('ServiceWorker registration error:', err);
       });
-    });
+    };
+
+    if (document.readyState === 'complete') {
+      registerServiceWorker();
+    } else {
+      window.addEventListener('load', registerServiceWorker);
+    }
   }
 });
