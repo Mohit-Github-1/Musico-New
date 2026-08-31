@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Musico — Offline Music Web App</title>
+  <meta name="description" content="Musico is a premium offline local music web application with rich audio playback, metadata parsing, and equalizer visualization." />
+  
+  <!-- Fonts: Space Grotesk, Contrail One, Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Contrail+One&family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  
+  <!-- App Stylesheet -->
+  <link rel="stylesheet" href="css/style.css" />
+
+  <!-- PWA Web App Manifest & Meta -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#000000" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Musico" />
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.png" />
+  <link rel="icon" type="image/png" href="assets/Mlogo.png" />
+</head>
+<body>
+  <div class="musico-app">
+    
+    <!-- 1. LEFT SIDEBAR -->
+    <aside class="sidebar" aria-label="Main Navigation">
+      <div class="sidebar-top">
+        <!-- Logo Mark -->
+        <div class="logo-mark" id="logoBtn" title="Musico Home">
+          <img src="assets/Mlogo.png" alt="Musico Logo" class="logo-img" />
+        </div>
+
+        <!-- Add Music Folder Button (+) -->
+        <button class="add-folder-btn" id="addFolderBtn" title="Add Music Folder / Files" aria-label="Add Music Folder">
+          <svg class="add-icon" viewBox="0 0 24 24" fill="none">
+            <line x1="12" y1="3.5" x2="12" y2="20.5" stroke="white" stroke-width="3.5" stroke-linecap="round"/>
+            <line x1="3.5" y1="12" x2="20.5" y2="12" stroke="white" stroke-width="3.5" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Navigation Menu Items -->
+      <nav class="sidebar-menu" aria-label="Sidebar Menu">
+        <button class="menu-item-btn active" data-action="home" title="Home" aria-label="Home">
+          <img src="assets/HomeMenuItem.png" alt="Home" class="menu-item-icon" />
+        </button>
+        <button class="menu-item-btn" data-action="playlists" title="Playlists" aria-label="Playlists">
+          <img src="assets/PlaylistMenuItem.png" alt="Playlists" class="menu-item-icon" />
+        </button>
+        <button class="menu-item-btn" data-action="albums" title="Albums" aria-label="Albums">
+          <img src="assets/AlbumMenuItem.png" alt="Albums" class="menu-item-icon" />
+        </button>
+        <button class="menu-item-btn" data-action="all-songs" title="All Songs" aria-label="All Songs">
+          <img src="assets/AllSongsMenuItem.png" alt="All Songs" class="menu-item-icon" />
+        </button>
+        <button class="menu-item-btn" data-action="delete" title="Manage Library / Clear" aria-label="Manage Library">
+          <img src="assets/DeleteMenuItem.png" alt="Manage Library" class="menu-item-icon" />
+        </button>
+      </nav>
+    </aside>
+
+    <!-- 2. MIDDLE PLAYER SECTION -->
+    <main class="player-section" aria-label="Now Playing Section">
+      <!-- Player Header Bar (Off-white top section with 1px divider) -->
+      <header class="player-header">
+        <span class="brand-text">usico</span>
+        <div class="view-selector-container">
+          <button class="view-selector-pill" id="viewSelectorPill" aria-haspopup="true" aria-expanded="false" title="View Options">
+            <svg class="chevron-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+            <span id="viewSelectorLabel">Home / All Songs</span>
+          </button>
+          <div class="view-dropdown" id="viewDropdownMenu" role="menu">
+            <button class="dropdown-item" data-view="all" role="menuitem">Home / All Songs</button>
+            <button class="dropdown-item" data-view="albums" role="menuitem">Albums</button>
+            <button class="dropdown-item" data-view="playlists" role="menuitem">Playlists</button>
+            <button class="dropdown-item" data-view="favorites" role="menuitem">Favorites</button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Pure White Lower Player Body -->
+      <div class="player-body">
+        <!-- Top Horizontal Slider Row (Song List Scroll Control) -->
+        <div class="top-slider-row">
+          <div class="top-slider-pill" id="topSliderTrack" title="Scroll Songs List" role="scrollbar" aria-label="Scroll Songs List" tabindex="0">
+            <div class="top-slider-thumb" id="topSliderThumb"></div>
+          </div>
+        </div>
+
+        <!-- Filter Pill Buttons Row: All, Column, Shuffle -->
+        <div class="filter-pills-row">
+          <div class="filter-pills-group">
+            <button class="filter-pill-btn active" id="filterAllBtn">All</button>
+            <button class="filter-pill-btn" id="filterColumnBtn">Column</button>
+            <button class="filter-pill-btn" id="filterShuffleBtn">Shuffle</button>
+          </div>
+        </div>
+
+        <!-- Now Playing Artist with Sound Wave -->
+        <div class="artist-now-playing">
+          <div class="equalizer-icon-static" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+          <h2 class="artist-title-bold" id="nowPlayingArtist">Unknown</h2>
+        </div>
+
+        <!-- Large Squircle Album Art Container -->
+        <div class="album-art-container">
+          <img src="assets/Mlogowithbg.png" alt="Album Cover Art" id="nowPlayingAlbumArt" class="album-art-img fallback-art" onerror="this.onerror=null;this.src='assets/Mlogowithbg.png';this.className='album-art-img fallback-art';" />
+          <button class="now-playing-options-btn" id="nowPlayingOptionsBtn" title="Song Options" aria-label="Song Options">
+            <img src="Assets/Options 3 Dots.svg" alt="Options" class="now-playing-options-icon" />
+          </button>
+        </div>
+
+        <!-- Bottom Progress Pill Bar with Track Title -->
+        <div class="player-bottom-progress-bar" id="progressBarContainer" title="Click to seek" role="progressbar" aria-label="Track Progress" tabindex="0">
+          <div class="progress-pill-active" id="progressPill"></div>
+          <span class="now-playing-song-name" id="nowPlayingTitle">No Songs</span>
+        </div>
+
+        <!-- Playback Controls Row -->
+        <div class="playback-controls-row">
+          <div class="transport-buttons-group">
+            <!-- Previous Button -->
+            <button class="control-btn" id="prevBtn" title="Previous Track" aria-label="Previous Track">
+              <img src="assets/Prevbtn.svg" alt="Previous" class="control-btn-icon" />
+            </button>
+            
+            <!-- Play / Pause Button -->
+            <button class="control-btn play-pause-btn" id="playPauseBtn" title="Play / Pause" aria-label="Play or Pause">
+              <img src="assets/Plausebtn.svg" alt="Play" class="control-btn-icon" />
+            </button>
+            
+            <!-- Next Button -->
+            <button class="control-btn" id="nextBtn" title="Next Track" aria-label="Next Track">
+              <img src="assets/Nxtbtn.svg" alt="Next" class="control-btn-icon" />
+            </button>
+          </div>
+
+          <!-- Monospace Time Display -->
+          <span class="player-time-display" id="playerTimeDisplay">0:00/0:00</span>
+        </div>
+      </div>
+    </main>
+
+    <!-- 3. RIGHT SONGS LIBRARY SECTION -->
+    <section class="library-section" aria-label="Songs Library">
+      <!-- Mobile Song List Top Header (Shown on mobile only) -->
+      <header class="mobile-top-header" id="mobileTopHeader">
+        <div class="mobile-logo-brand" id="mobileLogoBtn" title="Musico Home">
+          <img src="assets/Mlogo.png" alt="Musico Logo" class="mobile-logo-icon" />
+          <span class="mobile-brand-text">usico</span>
+        </div>
+        <button class="mobile-search-btn" id="mobileSearchBtn" title="Search Songs" aria-label="Search Songs">
+          <img src="assets/Search.png" alt="Search" class="mobile-search-icon" />
+        </button>
+      </header>
+
+      <!-- Mobile Filter Pill Buttons: All, Column, Shuffle (Shown on mobile only) -->
+      <div class="mobile-filter-bar" id="mobileFilterBar">
+        <button class="mobile-filter-btn active" id="mobileFilterAllBtn">All</button>
+        <button class="mobile-filter-btn" id="mobileFilterColumnBtn">Column</button>
+        <button class="mobile-filter-btn" id="mobileFilterShuffleBtn">Shuffle</button>
+      </div>
+
+      <!-- Mobile Side Controls: Add Music Folder (Black), Settings (Gray) & Vertical Scrollbar (Black Track + Gray Thumb) -->
+      <div class="mobile-side-controls" id="mobileSideControls" aria-label="Mobile Quick Controls">
+        <button class="mobile-side-btn add-btn" id="mobileSideAddBtn" title="Add Music Folder" aria-label="Add Music Folder"></button>
+        <button class="mobile-side-btn settings-btn" id="mobileSideSettingsBtn" title="Settings" aria-label="Settings"></button>
+        <div class="mobile-scrollbar-track" id="mobileScrollbarTrack" role="scrollbar" aria-label="Song List Scrollbar" tabindex="0">
+          <div class="mobile-scrollbar-thumb" id="mobileScrollbarThumb"></div>
+        </div>
+      </div>
+
+      <!-- Desktop Library Top Header -->
+      <header class="library-header">
+        <h1 class="library-heading">Songs</h1>
+        <div class="library-actions">
+          <button class="circle-action-btn" id="searchBtn" title="Search Songs" aria-label="Search Songs">
+            <img src="assets/Search.png" alt="Search" class="action-btn-icon" />
+          </button>
+          <button class="circle-action-btn" id="settingsBtn" title="Settings" aria-label="Settings">
+            <img src="assets/Settings.png" alt="Settings" class="action-btn-icon" />
+          </button>
+          <div class="profile-badge-pill" id="profileBadge" title="User Profile: Mohit">
+            <span class="profile-user-name">Mohit</span>
+            <img src="assets/ProfilePic.png" alt="Mohit Avatar" class="profile-avatar-img" />
+          </div>
+        </div>
+      </header>
+
+      <!-- 4 Equalizer Visualizer Bars -->
+      <div class="library-equalizer-bars" aria-hidden="true">
+        <span class="eq-bar" id="eqBar1"></span>
+        <span class="eq-bar" id="eqBar2"></span>
+        <span class="eq-bar" id="eqBar3"></span>
+        <span class="eq-bar" id="eqBar4"></span>
+      </div>
+
+      <!-- Scrollable Songs List -->
+      <div class="songs-list" id="songsListContainer" role="list">
+        <!-- Rendered dynamically via JavaScript -->
+      </div>
+
+      <!-- Mobile Compact Now Playing Pop-up (IMAGE 3) -->
+      <div class="mobile-compact-popup" id="mobileCompactPopup" role="region" aria-label="Now Playing Compact Control">
+        <div class="mobile-popup-cover-wrapper" id="mobilePopupCoverWrapper">
+          <img src="assets/M logo for music items.png" alt="Cover Art" id="mobilePopupCoverArt" class="mobile-popup-cover fallback-art" />
+        </div>
+        <div class="mobile-popup-body" id="mobilePopupBody">
+          <div class="mobile-popup-top-row">
+            <div class="mobile-popup-controls">
+              <button class="mobile-popup-ctrl-btn" id="mobilePopupPrevBtn" title="Previous Track" aria-label="Previous Track">
+                <img src="assets/Prevbtn.svg" alt="Previous" class="mobile-popup-icon" />
+              </button>
+              <button class="mobile-popup-ctrl-btn play-btn" id="mobilePopupPlayPauseBtn" title="Play or Pause" aria-label="Play or Pause">
+                <img src="assets/Plausebtn.svg" alt="Play" class="mobile-popup-icon" />
+              </button>
+              <button class="mobile-popup-ctrl-btn" id="mobilePopupNextBtn" title="Next Track" aria-label="Next Track">
+                <img src="assets/Nxtbtn.svg" alt="Next" class="mobile-popup-icon" />
+              </button>
+            </div>
+            <span class="mobile-popup-time" id="mobilePopupTimeDisplay">0:00/0:00</span>
+          </div>
+          <div class="mobile-popup-progress-track" id="mobilePopupProgressTrack" role="progressbar" aria-label="Track Progress" tabindex="0">
+            <div class="mobile-popup-progress-bar" id="mobilePopupProgressBar"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mobile Bottom Navigation Bar (IMAGE 1) -->
+      <nav class="mobile-bottom-nav" id="mobileBottomNav" aria-label="Mobile Navigation">
+        <button class="mobile-nav-btn active" data-action="home" title="Home" aria-label="Home">
+          <img src="assets/HomeMenuItem.png" alt="Home" class="mobile-nav-icon" />
+        </button>
+        <button class="mobile-nav-btn" data-action="playlists" title="Playlists" aria-label="Playlists">
+          <img src="assets/PlaylistMenuItem.png" alt="Playlists" class="mobile-nav-icon" />
+        </button>
+        <button class="mobile-nav-btn" data-action="albums" title="Albums" aria-label="Albums">
+          <img src="assets/AlbumMenuItem.png" alt="Albums" class="mobile-nav-icon" />
+        </button>
+        <button class="mobile-nav-btn" data-action="all-songs" title="All Songs" aria-label="All Songs">
+          <img src="assets/AllSongsMenuItem.png" alt="All Songs" class="mobile-nav-icon" />
+        </button>
+        <button class="mobile-nav-btn" data-action="delete" title="Manage Library" aria-label="Manage Library">
+          <img src="assets/DeleteMenuItem.png" alt="Manage Library" class="mobile-nav-icon" />
+        </button>
+      </nav>
+
+      <!-- Mobile Full Now Playing Screen (IMAGE 2 - Animated White Content Area) -->
+      <div class="mobile-full-player" id="mobileFullPlayer" role="dialog" aria-modal="true" aria-label="Full Now Playing Screen">
+        <!-- Swipe Down Indicator Handle -->
+        <div class="mobile-swipe-handle" id="mobileSwipeHandle" title="Swipe down to return">
+          <span class="swipe-pill"></span>
+        </div>
+
+        <!-- Filter Buttons in Full Player: All, Column, Shuffle -->
+        <div class="mobile-filter-bar mobile-full-filters">
+          <button class="mobile-filter-btn active" id="mobileFullFilterAllBtn">All</button>
+          <button class="mobile-filter-btn" id="mobileFullFilterColumnBtn">Column</button>
+          <button class="mobile-filter-btn" id="mobileFullFilterShuffleBtn">Shuffle</button>
+        </div>
+
+        <!-- Main Full Player Content -->
+        <div class="mobile-full-body" id="mobileFullBody">
+          <div class="mobile-full-main-content" id="mobileFullMainContent">
+            <!-- Artist with Sound Wave Equalizer -->
+            <div class="mobile-full-artist-row">
+              <div class="equalizer-icon-static" aria-hidden="true">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+              <h2 class="mobile-full-artist-name" id="mobileFullArtist">Unknown</h2>
+            </div>
+
+            <!-- Large Squircle Album Art with Options Button -->
+            <div class="mobile-full-art-container">
+              <img src="assets/Mlogowithbg.png" alt="Album Art" id="mobileFullAlbumArt" class="mobile-full-art fallback-art" />
+              <button class="now-playing-options-btn mobile-full-options-btn" id="mobileFullOptionsBtn" title="Song Options" aria-label="Song Options">
+                <img src="Assets/Options 3 Dots.svg" alt="Options" class="now-playing-options-icon" />
+              </button>
+            </div>
+
+            <!-- Progress Pill Bar with Track Title -->
+            <div class="mobile-full-progress-bar-container" id="mobileFullProgressBarContainer" role="progressbar" aria-label="Track Progress" tabindex="0">
+              <div class="mobile-full-progress-pill" id="mobileFullProgressPill"></div>
+              <span class="mobile-full-song-title" id="mobileFullTitle">No Songs</span>
+            </div>
+
+            <!-- Playback Controls Row: <<  ▷  >>    Time -->
+            <div class="mobile-full-controls-row">
+              <div class="mobile-full-transport-group">
+                <button class="mobile-full-ctrl-btn" id="mobileFullPrevBtn" title="Previous Track" aria-label="Previous Track">
+                  <img src="assets/Prevbtn.svg" alt="Previous" class="mobile-ctrl-icon" />
+                </button>
+                <button class="mobile-full-ctrl-btn play-btn" id="mobileFullPlayPauseBtn" title="Play or Pause" aria-label="Play or Pause">
+                  <img src="assets/Plausebtn.svg" alt="Play" class="mobile-ctrl-icon" />
+                </button>
+                <button class="mobile-full-ctrl-btn" id="mobileFullNextBtn" title="Next Track" aria-label="Next Track">
+                  <img src="assets/Nxtbtn.svg" alt="Next" class="mobile-ctrl-icon" />
+                </button>
+              </div>
+              <span class="mobile-full-time-display" id="mobileFullTimeDisplay">0:00/0:00</span>
+            </div>
+          </div>
+
+          <!-- Responsive In-Place Up Next Section (Image 2 & Image 3) -->
+          <div class="mobile-up-next-section" id="mobileUpNextSection" aria-label="Up Next Queue">
+            <div class="mobile-up-next-header" id="mobileUpNextHeader">
+              <span class="mobile-up-next-label">Up Next</span>
+            </div>
+            <div class="mobile-up-next-list" id="mobileUpNextList">
+              <!-- Dynamically populated based on available height -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Full-Screen Up Next Panel (Slides up on upward swipe) -->
+        <div class="mobile-up-next-panel" id="mobileUpNextPanel" role="dialog" aria-modal="true" aria-label="Full Up Next Queue">
+          <div class="mobile-up-next-panel-handle" id="mobileUpNextPanelHandle" title="Swipe down to close Up Next">
+            <span class="swipe-pill"></span>
+          </div>
+          <div class="mobile-up-next-panel-header">
+            <h2 class="mobile-up-next-panel-title">Up Next</h2>
+          </div>
+          <div class="mobile-up-next-full-list" id="mobileUpNextFullList">
+            <!-- Full upcoming queue list -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- Hidden Folder & File Pickers -->
+  <input type="file" id="folderPickerInput" webkitdirectory directory multiple accept="audio/*" style="display:none;" />
+  <input type="file" id="filePickerInput" multiple accept="audio/*,.mp3,.wav,.ogg,.flac,.m4a,.aac" style="display:none;" />
+
+  <!-- Search Modal Overlay -->
+  <div class="search-overlay" id="searchOverlay" role="dialog" aria-modal="true">
+    <div class="search-box-card">
+      <div class="search-input-wrapper">
+        <img src="assets/Search.png" alt="Search" width="18" height="18" />
+        <input type="text" id="searchInput" class="search-input" placeholder="Search by title, artist, album..." />
+        <button class="search-close-btn" id="closeSearchBtn" aria-label="Close search">✕</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Modal Overlay -->
+  <div class="modal-overlay" id="settingsModal" role="dialog" aria-modal="true">
+    <div class="settings-card">
+      <div class="settings-header">
+        <h2 class="settings-title">Musico Settings</h2>
+        <button class="close-modal-btn" id="closeSettingsBtn" aria-label="Close settings">✕</button>
+      </div>
+      
+      <div class="settings-group">
+        <label class="settings-group-label" for="settingsVolumeSlider">Master Audio Volume</label>
+        <input type="range" id="settingsVolumeSlider" class="range-slider" min="0" max="100" value="85" />
+      </div>
+
+      <div class="settings-group">
+        <span class="settings-group-label">Equalizer Acoustic Presets</span>
+        <div class="eq-presets-row">
+          <button class="eq-preset-btn active">Flat</button>
+          <button class="eq-preset-btn">Bass Boost</button>
+          <button class="eq-preset-btn">Vocal</button>
+          <button class="eq-preset-btn">Electronic</button>
+          <button class="eq-preset-btn">Rock</button>
+        </div>
+      </div>
+
+      <div class="settings-group">
+        <span class="settings-group-label">Library Management</span>
+        <button class="danger-btn" id="clearLibrarySettingsBtn">Clear Local Library</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Three-Dot Song Context Menu -->
+  <div class="context-menu" id="songContextMenu" role="menu">
+    <button class="context-item" data-action="play-next" role="menuitem">Play Next</button>
+    <button class="context-item" data-action="info" role="menuitem">Track Info</button>
+    <button class="context-item delete" data-action="delete" role="menuitem">Remove from Library</button>
+  </div>
+
+  <!-- Toast Notification Message -->
+  <div class="toast-message" id="toastMessage" role="status" aria-live="polite"></div>
+
+  <!-- Application Scripts -->
+  <script src="js/id3Parser.js"></script>
+  <script src="js/fileManager.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
