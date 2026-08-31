@@ -146,6 +146,15 @@ class MusicPlayer {
     }
     this.audio.currentTime = 0;
 
+    // Persist last played track ID for app restarts (both Mobile & PC PWA)
+    if (this.currentTrack && this.currentTrack.id) {
+      try {
+        localStorage.setItem('musico-last-played-id', this.currentTrack.id);
+      } catch (e) {
+        console.warn('Could not save last played song ID:', e);
+      }
+    }
+
     this.updateNowPlayingUI();
     this.updateProgressUI();
   }

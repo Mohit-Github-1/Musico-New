@@ -24,7 +24,7 @@
   <link rel="apple-touch-icon" href="assets/icons/icon-192.png" />
   <link rel="icon" type="image/png" href="assets/app icon main.png" />
 </head>
-<body>
+<body data-theme="dark">
   <div class="musico-app">
     
     <!-- 1. LEFT SIDEBAR -->
@@ -117,7 +117,7 @@
         <div class="album-art-container">
           <img src="assets/Mlogowithbg.png" alt="Album Cover Art" id="nowPlayingAlbumArt" class="album-art-img fallback-art" onerror="this.onerror=null;this.src='assets/Mlogowithbg.png';this.className='album-art-img fallback-art';" />
           <button class="now-playing-options-btn" id="nowPlayingOptionsBtn" title="Song Options" aria-label="Song Options">
-            <img src="assets/Options 3 Dots.svg" alt="Options" class="now-playing-options-icon" />
+            <img src="assets/Dark Mode/DarkModeOptions 3 Dots.svg" alt="Options" class="now-playing-options-icon" />
           </button>
         </div>
 
@@ -132,7 +132,7 @@
           <div class="transport-buttons-group">
             <!-- Previous Button -->
             <button class="control-btn" id="prevBtn" title="Previous Track" aria-label="Previous Track">
-              <img src="assets/Prevbtn.svg" alt="Previous" class="control-btn-icon" />
+              <img src="assets/Dark Mode/DarkModePrevBtn.svg" alt="Previous" class="control-btn-icon" />
             </button>
             
             <!-- Play / Pause Button -->
@@ -142,7 +142,7 @@
             
             <!-- Next Button -->
             <button class="control-btn" id="nextBtn" title="Next Track" aria-label="Next Track">
-              <img src="assets/Nxtbtn.svg" alt="Next" class="control-btn-icon" />
+              <img src="assets/Dark Mode/DarkModeNxtBtn.svg" alt="Next" class="control-btn-icon" />
             </button>
           </div>
 
@@ -161,7 +161,7 @@
           <span class="mobile-brand-text">usico</span>
         </div>
         <button class="mobile-search-btn" id="mobileSearchBtn" title="Search Songs" aria-label="Search Songs">
-          <img src="assets/Search.png" alt="Search" class="mobile-search-icon" />
+          <img src="assets/Dark Mode/DarkModeSearchIcon.png" alt="Search" class="mobile-search-icon" />
         </button>
       </header>
 
@@ -186,10 +186,10 @@
         <h1 class="library-heading">Songs</h1>
         <div class="library-actions">
           <button class="circle-action-btn" id="searchBtn" title="Search Songs" aria-label="Search Songs">
-            <img src="assets/Search.png" alt="Search" class="action-btn-icon" />
+            <img src="assets/Dark Mode/DarkModeSearchIcon.png" alt="Search" class="action-btn-icon" />
           </button>
           <button class="circle-action-btn" id="settingsBtn" title="Settings" aria-label="Settings">
-            <img src="assets/Settings.png" alt="Settings" class="action-btn-icon" />
+            <img src="assets/Dark Mode/DarkModeSettings.png" alt="Settings" class="action-btn-icon" />
           </button>
           <div class="profile-badge-pill" id="profileBadge" title="User Profile: Mohit">
             <span class="profile-user-name">Mohit</span>
@@ -220,13 +220,13 @@
           <div class="mobile-popup-top-row">
             <div class="mobile-popup-controls">
               <button class="mobile-popup-ctrl-btn" id="mobilePopupPrevBtn" title="Previous Track" aria-label="Previous Track">
-                <img src="assets/Prevbtn.svg" alt="Previous" class="mobile-popup-icon" />
+                <img src="assets/Dark Mode/DarkModePrevBtn.svg" alt="Previous" class="mobile-popup-icon" />
               </button>
               <button class="mobile-popup-ctrl-btn play-btn" id="mobilePopupPlayPauseBtn" title="Play or Pause" aria-label="Play or Pause">
                 <img src="assets/Plausebtn.svg" alt="Play" class="mobile-popup-icon" />
               </button>
               <button class="mobile-popup-ctrl-btn" id="mobilePopupNextBtn" title="Next Track" aria-label="Next Track">
-                <img src="assets/Nxtbtn.svg" alt="Next" class="mobile-popup-icon" />
+                <img src="assets/Dark Mode/DarkModeNxtBtn.svg" alt="Next" class="mobile-popup-icon" />
               </button>
             </div>
             <span class="mobile-popup-time" id="mobilePopupTimeDisplay">0:00/0:00</span>
@@ -287,7 +287,7 @@
             <div class="mobile-full-art-container">
               <img src="assets/Mlogowithbg.png" alt="Album Art" id="mobileFullAlbumArt" class="mobile-full-art fallback-art" />
               <button class="now-playing-options-btn mobile-full-options-btn" id="mobileFullOptionsBtn" title="Song Options" aria-label="Song Options">
-                <img src="assets/Options 3 Dots.svg" alt="Options" class="now-playing-options-icon" />
+                <img src="assets/Dark Mode/DarkModeOptions 3 Dots.svg" alt="Options" class="now-playing-options-icon" />
               </button>
             </div>
 
@@ -301,13 +301,13 @@
             <div class="mobile-full-controls-row">
               <div class="mobile-full-transport-group">
                 <button class="mobile-full-ctrl-btn" id="mobileFullPrevBtn" title="Previous Track" aria-label="Previous Track">
-                  <img src="assets/Prevbtn.svg" alt="Previous" class="mobile-ctrl-icon" />
+                  <img src="assets/Dark Mode/DarkModePrevBtn.svg" alt="Previous" class="mobile-ctrl-icon" />
                 </button>
                 <button class="mobile-full-ctrl-btn play-btn" id="mobileFullPlayPauseBtn" title="Play or Pause" aria-label="Play or Pause">
                   <img src="assets/Plausebtn.svg" alt="Play" class="mobile-ctrl-icon" />
                 </button>
                 <button class="mobile-full-ctrl-btn" id="mobileFullNextBtn" title="Next Track" aria-label="Next Track">
-                  <img src="assets/Nxtbtn.svg" alt="Next" class="mobile-ctrl-icon" />
+                  <img src="assets/Dark Mode/DarkModeNxtBtn.svg" alt="Next" class="mobile-ctrl-icon" />
                 </button>
               </div>
               <span class="mobile-full-time-display" id="mobileFullTimeDisplay">0:00/0:00</span>
@@ -368,7 +368,7 @@
       <div class="settings-group">
         <span class="settings-group-label">Theme Appearance</span>
         <div class="theme-toggle-row">
-          <button class="theme-toggle-btn active" id="themeLightBtn" data-theme="light" title="Switch to Light Mode">
+          <button class="theme-toggle-btn" id="themeLightBtn" data-theme="light" title="Switch to Light Mode">
             <svg class="theme-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="5"></circle>
               <line x1="12" y1="1" x2="12" y2="3"></line>
@@ -382,7 +382,7 @@
             </svg>
             <span>Light Mode</span>
           </button>
-          <button class="theme-toggle-btn" id="themeDarkBtn" data-theme="dark" title="Switch to Dark Mode">
+          <button class="theme-toggle-btn active" id="themeDarkBtn" data-theme="dark" title="Switch to Dark Mode">
             <svg class="theme-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
             </svg>

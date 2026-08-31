@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   let isGridView = false;
   let currentView = 'all_songs';
   let searchQuery = '';
-  let currentTheme = localStorage.getItem('musico-theme') || 'light';
+  let currentTheme = localStorage.getItem('musico-theme') || 'dark';
 
   // DOM Elements
   const songsListContainer = document.getElementById('songsListContainer');
@@ -48,7 +48,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (savedTracks && savedTracks.length > 0) {
       allTracks = [...savedTracks];
       renderSongList();
-      player.setQueue(allTracks, 0, false);
+
+      // Restore last played song if it exists in the library, otherwise default to first song
+      const lastPlayedId = localStorage.getItem('musico-last-played-id');
+      let targetIndex = 0;
+      if (lastPlayedId) {
+        const foundIdx = allTracks.findIndex(t => t.id === lastPlayedId);
+        if (foundIdx !== -1) {
+          targetIndex = foundIdx;
+        }
+      }
+      player.setQueue(allTracks, targetIndex, false);
     } else {
       allTracks = [];
       renderSongList();
@@ -407,10 +417,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const mainHeight = mobileFullMainContent.offsetHeight;
     const availableHeight = bodyHeight - mainHeight;
 
-    const cardHeightWithGap = 60; // 52px card + 8px gap
-    const headerHeight = 34;      // "Up Next" header height
+    const isShortScreen = window.innerHeight <= 680;
+    const cardHeightWithGap = isShortScreen ? 48 : 60;
+    const headerHeight = isShortScreen ? 24 : 34;
+    const minCardHeight = isShortScreen ? 42 : 52;
 
-    if (upcoming.length === 0 || availableHeight < (headerHeight + 52)) {
+    if (upcoming.length === 0 || availableHeight < (headerHeight + minCardHeight)) {
       // STATE B: Compact "UP NEXT" bar (IMAGE 3)
       mobileUpNextSection.classList.add('compact-state');
       mobileUpNextList.innerHTML = '';
@@ -988,6 +1000,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       } else if (action === 'delete') {
         if (confirm(`Remove "${track.title}" from library?`)) {
           fileManager.deleteTrackFromDB(track.id);
+          if (track.id === localStorage.getItem('musico-last-played-id')) {
+            localStorage.removeItem('musico-last-played-id');
+          }
           allTracks = allTracks.filter(t => t.id !== track.id);
           if (allTracks.length === 0) {
             player.setQueue([], 0, false);
@@ -1015,6 +1030,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     clearLibraryBtn.addEventListener('click', async () => {
       if (confirm('Clear all imported songs?')) {
         await fileManager.clearAllTracks();
+        localStorage.removeItem('musico-last-played-id');
         allTracks = [];
         player.setQueue([], 0, false);
         renderSongList();
@@ -1105,6 +1121,39 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Start app
   applyTheme(currentTheme);
   await initLibrary();
+
+  // =========================================================================
+  // SINGLE-INSTANCE WINDOW COORDINATOR (PC / Windows PWA)
+  // Prevents opening duplicate windows when user launches Musico again.
+  // =========================================================================
+  if ('launchQueue' in window && 'setConsumer' in window.launchQueue) {
+    window.launchQueue.setConsumer(() => {
+      window.focus();
+    });
+  }
+
+  if ('BroadcastChannel' in window) {
+    try {
+      const instanceChannel = new BroadcastChannel('musico_single_instance_coordinator');
+      // Announce this launch event to any already-running instance
+      instanceChannel.postMessage({ type: 'MUSICO_PING', timestamp: Date.now() });
+
+      instanceChannel.onmessage = (event) => {
+        if (!event.data) return;
+        if (event.data.type === 'MUSICO_PING') {
+          // Existing active window receives ping -> Focus window to bring it to front
+          window.focus();
+          // Inform the new window that an active instance already exists
+          instanceChannel.postMessage({ type: 'MUSICO_ACTIVE_INSTANCE_EXISTS' });
+        } else if (event.data.type === 'MUSICO_ACTIVE_INSTANCE_EXISTS') {
+          // This duplicate window should close itself to enforce a single window
+          window.close();
+        }
+      };
+    } catch (e) {
+      console.warn('Single-instance coordinator initialization error:', e);
+    }
+  }
 
   // Register PWA Service Worker for Offline / Standalone Installation
   if ('serviceWorker' in navigator && (window.location.protocol === 'http:' || window.location.protocol === 'https:')) {
