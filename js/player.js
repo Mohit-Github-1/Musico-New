@@ -140,9 +140,21 @@ class MusicPlayer {
     this.currentIndex = index;
     this.currentTrack = this.queue[index];
 
-    const src = this.currentTrack.audioUrl;
-    if (src) {
-      this.audio.src = src;
+    // Revoke previous audio blob URL to prevent memory leaks
+    if (this.activeAudioUrl) {
+      try {
+        URL.revokeObjectURL(this.activeAudioUrl);
+      } catch (e) {}
+      this.activeAudioUrl = null;
+    }
+
+    if (this.currentTrack) {
+      if (this.currentTrack.fileBlob) {
+        this.activeAudioUrl = URL.createObjectURL(this.currentTrack.fileBlob);
+        this.audio.src = this.activeAudioUrl;
+      } else if (this.currentTrack.audioUrl) {
+        this.audio.src = this.currentTrack.audioUrl;
+      }
     }
     this.audio.currentTime = 0;
 

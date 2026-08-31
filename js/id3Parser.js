@@ -1,9 +1,45 @@
 /**
- * Musico - ID3 & Audio Metadata Parser
- * Extracts Title, Artist, Album, Year, and Embedded Album Art directly from local audio files.
+ * Musico - ID3 & Audio Metadata Parser (Low-Memory Optimized)
+ * Extracts Title, Artist, Album, Year, and Compressed Embedded Album Art directly from local audio files.
  */
 
 const ID3Parser = {
+  /**
+   * Compress cover artwork to compact dimensions (max 320px) to prevent Android/Mobile low-memory crashes
+   */
+  async compressImageBlob(rawBlob, maxDim = 320) {
+    if (!rawBlob || rawBlob.size < 45000) return rawBlob;
+    try {
+      if ('createImageBitmap' in window) {
+        const bitmap = await createImageBitmap(rawBlob);
+        const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
+        if (scale >= 1) {
+          bitmap.close();
+          return rawBlob;
+        }
+        const w = Math.round(bitmap.width * scale);
+        const h = Math.round(bitmap.height * scale);
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(bitmap, 0, 0, w, h);
+          bitmap.close();
+          return new Promise((resolve) => {
+            canvas.toBlob((resizedBlob) => {
+              resolve(resizedBlob || rawBlob);
+            }, 'image/jpeg', 0.82);
+          });
+        }
+        bitmap.close();
+      }
+    } catch (e) {
+      // Silently return rawBlob if compression is unsupported
+    }
+    return rawBlob;
+  },
+
   /**
    * Parse metadata from an audio File or Blob
    * @param {File|Blob} file 
@@ -12,49 +48,70 @@ const ID3Parser = {
   async parse(file) {
     const fallback = this.getFallbackMetadata(file.name || 'Unknown Track');
     try {
-      // 1. Try reading ID3v2 tags (MP3 / WAV with ID3 chunk)
-      const headerBuffer = await file.slice(0, 262144).arrayBuffer(); // Read first 256KB
+      // 1. Read small slice (first 192KB) to inspect ID3v2 header without loading whole file
+      const sliceSize = Math.min(196608, file.size);
+      const headerBuffer = await file.slice(0, sliceSize).arrayBuffer();
       const id3v2 = this.parseID3v2(headerBuffer);
 
-      if (id3v2 && (id3v2.title || id3v2.artist || id3v2.coverUrl || id3v2.coverBlob)) {
+      if (id3v2 && (id3v2.title || id3v2.artist || id3v2.coverBlob)) {
+        let coverBlob = id3v2.coverBlob;
+        let coverUrl = null;
+        if (coverBlob) {
+          coverBlob = await this.compressImageBlob(coverBlob, 320);
+          coverUrl = URL.createObjectURL(coverBlob);
+        }
+
         return {
           title: id3v2.title || fallback.title,
           artist: id3v2.artist || fallback.artist,
           album: id3v2.album || fallback.album,
           year: id3v2.year || '',
-          coverUrl: id3v2.coverUrl || null,
-          coverBlob: id3v2.coverBlob || null,
+          coverUrl: coverUrl,
+          coverBlob: coverBlob,
           duration: 0
         };
       }
 
       // 2. Try FLAC / OGG picture & metadata block
-      if (file.name.toLowerCase().endsWith('.flac') || file.name.toLowerCase().endsWith('.ogg')) {
+      const lowerName = (file.name || '').toLowerCase();
+      if (lowerName.endsWith('.flac') || lowerName.endsWith('.ogg')) {
         const flacMeta = this.parseFLAC(headerBuffer);
         if (flacMeta) {
+          let coverBlob = flacMeta.coverBlob;
+          let coverUrl = null;
+          if (coverBlob) {
+            coverBlob = await this.compressImageBlob(coverBlob, 320);
+            coverUrl = URL.createObjectURL(coverBlob);
+          }
           return {
             title: flacMeta.title || fallback.title,
             artist: flacMeta.artist || fallback.artist,
             album: flacMeta.album || fallback.album,
             year: flacMeta.year || '',
-            coverUrl: flacMeta.coverUrl || null,
-            coverBlob: flacMeta.coverBlob || null,
+            coverUrl: coverUrl,
+            coverBlob: coverBlob,
             duration: 0
           };
         }
       }
 
       // 3. Try M4A / MP4 atom tags (covr, ©nam, ©ART, ©alb)
-      if (file.name.toLowerCase().endsWith('.m4a') || file.name.toLowerCase().endsWith('.aac') || file.name.toLowerCase().endsWith('.mp4')) {
+      if (lowerName.endsWith('.m4a') || lowerName.endsWith('.aac') || lowerName.endsWith('.mp4')) {
         const m4aMeta = this.parseM4A(headerBuffer);
         if (m4aMeta) {
+          let coverBlob = m4aMeta.coverBlob;
+          let coverUrl = null;
+          if (coverBlob) {
+            coverBlob = await this.compressImageBlob(coverBlob, 320);
+            coverUrl = URL.createObjectURL(coverBlob);
+          }
           return {
             title: m4aMeta.title || fallback.title,
             artist: m4aMeta.artist || fallback.artist,
             album: m4aMeta.album || fallback.album,
             year: m4aMeta.year || '',
-            coverUrl: m4aMeta.coverUrl || null,
-            coverBlob: m4aMeta.coverBlob || null,
+            coverUrl: coverUrl,
+            coverBlob: coverBlob,
             duration: 0
           };
         }
@@ -71,6 +128,7 @@ const ID3Parser = {
             album: id3v1.album || fallback.album,
             year: id3v1.year || '',
             coverUrl: null,
+            coverBlob: null,
             duration: 0
           };
         }
@@ -78,7 +136,6 @@ const ID3Parser = {
 
       return fallback;
     } catch (err) {
-      console.warn('Metadata parse error, using filename fallback:', err);
       return fallback;
     }
   },
@@ -104,10 +161,10 @@ const ID3Parser = {
       artist: '',
       album: '',
       year: '',
-      coverUrl: null
+      coverBlob: null
     };
 
-    // ID3v2.2 uses 3-byte frame identifiers and 3-byte frame sizes
+    // ID3v2.2
     if (majorVersion === 2) {
       while (offset < maxOffset - 6) {
         let frameId = '';
@@ -125,7 +182,10 @@ const ID3Parser = {
         else if (frameId === 'TP1') result.artist = this.decodeTextFrame(frameBuffer);
         else if (frameId === 'TAL') result.album = this.decodeTextFrame(frameBuffer);
         else if (frameId === 'TYE') result.year = this.decodeTextFrame(frameBuffer);
-        else if (frameId === 'PIC' && !result.coverUrl) result.coverUrl = this.decodeAPICFrame(frameBuffer);
+        else if (frameId === 'PIC' && !result.coverBlob) {
+          const apic = this.decodeAPICFrame(frameBuffer);
+          if (apic && apic.coverBlob) result.coverBlob = apic.coverBlob;
+        }
 
         offset += 6 + frameSize;
       }
@@ -164,10 +224,9 @@ const ID3Parser = {
         result.album = this.decodeTextFrame(frameBuffer);
       } else if (frameId === 'TYER' || frameId === 'TDRC') {
         result.year = this.decodeTextFrame(frameBuffer);
-      } else if (frameId === 'APIC' && !result.coverUrl) {
+      } else if (frameId === 'APIC' && !result.coverBlob) {
         const apic = this.decodeAPICFrame(frameBuffer);
-        if (apic) {
-          result.coverUrl = apic.coverUrl;
+        if (apic && apic.coverBlob) {
           result.coverBlob = apic.coverBlob;
         }
       }
@@ -179,7 +238,7 @@ const ID3Parser = {
   },
 
   /**
-   * Decode APIC (Attached Picture) frame to Blob URL & Blob
+   * Decode APIC (Attached Picture) frame to Blob
    */
   decodeAPICFrame(buffer) {
     try {
@@ -219,11 +278,9 @@ const ID3Parser = {
       const imgBytes = bytes.slice(offset);
       const blob = new Blob([imgBytes], { type: mimeType });
       return {
-        coverBlob: blob,
-        coverUrl: URL.createObjectURL(blob)
+        coverBlob: blob
       };
     } catch (e) {
-      console.warn('Error decoding APIC cover image:', e);
       return null;
     }
   },
@@ -260,14 +317,13 @@ const ID3Parser = {
           const imgBytes = new Uint8Array(buffer, dataOffset, dataLen);
           const blob = new Blob([imgBytes], { type: mime || 'image/jpeg' });
           return { 
-            coverBlob: blob,
-            coverUrl: URL.createObjectURL(blob) 
+            coverBlob: blob
           };
         }
         offset += blockSize;
       }
     } catch (e) {
-      console.warn('FLAC metadata error:', e);
+      // Silently ignore
     }
     return null;
   },
@@ -278,22 +334,19 @@ const ID3Parser = {
   parseM4A(buffer) {
     try {
       const bytes = new Uint8Array(buffer);
-      // Search for 'covr' atom in buffer
       for (let i = 0; i < bytes.length - 8; i++) {
         if (bytes[i] === 0x63 && bytes[i + 1] === 0x6F && bytes[i + 2] === 0x76 && bytes[i + 3] === 0x72) { // "covr"
-          // Skip atom header + data atom header (approx 16-24 bytes)
           let dataOffset = i + 4;
           while (dataOffset < bytes.length - 8) {
             if (bytes[dataOffset] === 0x64 && bytes[dataOffset + 1] === 0x61 && bytes[dataOffset + 2] === 0x74 && bytes[dataOffset + 3] === 0x61) { // "data"
               const dataLen = (bytes[dataOffset - 4] << 24) | (bytes[dataOffset - 3] << 16) | (bytes[dataOffset - 2] << 8) | bytes[dataOffset - 1];
-              const imgStart = dataOffset + 12; // skip flags & type
+              const imgStart = dataOffset + 12;
               const imgLen = dataLen - 16;
               if (imgStart + imgLen <= bytes.length) {
                 const imgBytes = bytes.slice(imgStart, imgStart + imgLen);
                 const blob = new Blob([imgBytes], { type: 'image/jpeg' });
                 return { 
-                  coverBlob: blob,
-                  coverUrl: URL.createObjectURL(blob) 
+                  coverBlob: blob
                 };
               }
             }
@@ -302,7 +355,7 @@ const ID3Parser = {
         }
       }
     } catch (e) {
-      console.warn('M4A cover parse error:', e);
+      // Silently ignore
     }
     return null;
   },
@@ -388,6 +441,7 @@ const ID3Parser = {
         album: 'Unknown Album',
         year: '',
         coverUrl: null,
+        coverBlob: null,
         duration: 0
       };
     }
@@ -398,6 +452,7 @@ const ID3Parser = {
       album: 'Unknown Album',
       year: '',
       coverUrl: null,
+      coverBlob: null,
       duration: 0
     };
   }
