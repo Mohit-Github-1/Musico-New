@@ -1,7 +1,6 @@
 /**
  * Musico - File Manager & Local Storage (IndexedDB)
- * Low-Memory Optimized: Controlled micro-batching, on-demand audio URL generation,
- * memory-efficient cover downscaling, and persistent storage without RAM bloat.
+ * High-Speed, Virtualization-Ready, and Alphabetically Sorted (Special -> Numbers -> A-Z)
  */
 
 class FileManager {
@@ -10,6 +9,38 @@ class FileManager {
     this.dbName = 'MusicoDB';
     this.dbVersion = 1;
     this.initDB();
+  }
+
+  /**
+   * Universal Song Sorting:
+   * 1. Special characters / symbols (#, @, _, -, etc.)
+   * 2. Numbers (0-9, 01, 100, etc.)
+   * 3. A-Z Alphabetical order (case-insensitive)
+   */
+  static getSortCategory(str) {
+    if (!str) return 1;
+    const ch = str.trim().charAt(0);
+    if (/^[A-Za-z]/i.test(ch)) return 3; // Alphabetical
+    if (/^[0-9]/.test(ch)) return 2; // Numbers
+    return 1; // Special Characters / Symbols
+  }
+
+  static compareTracks(a, b) {
+    const titleA = (a.title || a.name || '').trim();
+    const titleB = (b.title || b.name || '').trim();
+    const catA = FileManager.getSortCategory(titleA);
+    const catB = FileManager.getSortCategory(titleB);
+
+    if (catA !== catB) {
+      return catA - catB;
+    }
+
+    return titleA.localeCompare(titleB, undefined, { numeric: true, sensitivity: 'base' });
+  }
+
+  static sortTracks(tracks) {
+    if (!tracks || tracks.length === 0) return tracks;
+    return tracks.sort(FileManager.compareTracks);
   }
 
   /**
@@ -114,71 +145,105 @@ class FileManager {
   }
 
   /**
-   * Low-Memory High-Performance Progressive Audio Files Processing
-   * 1. Generates lightweight initial track descriptors with zero eager audio URLs.
-   * 2. Controlled micro-batches prevent Android/Mobile low-memory limits.
-   * 3. Downscales extracted album artwork and frees temporary memory.
-   * 4. Bulk batch transactions to IndexedDB.
+   * High-Speed & Low-Memory Audio Files Processing
+   * 1. Smart Re-import: matches files against existing IndexedDB records instantly.
+   * 2. Sorts immediately (Special -> Numbers -> A-Z).
+   * 3. Prioritizes visible screen tracks first.
+   * 4. Parallel background batch parsing and bulk DB writes.
    */
   async processAudioFiles(files, options = {}) {
     if (!files || files.length === 0) return [];
 
     const total = files.length;
     const initialTracks = [];
-
-    // Phase 1: Rapid lightweight track initialization (<30ms)
     const timestamp = Date.now();
-    for (let i = 0; i < total; i++) {
-      const file = files[i];
-      const id = 'local_' + timestamp + '_' + i + '_' + Math.random().toString(36).substr(2, 6);
-      const cleanName = file.name.replace(/\.[^/.]+$/, '');
-      let artist = 'Unknown';
-      let title = cleanName;
 
-      if (cleanName.includes(' - ')) {
-        const parts = cleanName.split(' - ');
-        artist = parts[0].trim() || 'Unknown';
-        title = parts.slice(1).join(' - ').trim() || cleanName;
-      }
-
-      initialTracks.push({
-        id: id,
-        title: title,
-        artist: artist,
-        album: 'Unknown Album',
-        year: '',
-        duration: 0,
-        formattedDuration: '0:00',
-        coverUrl: 'assets/M logo for music items.png',
-        coverBlob: null,
-        hasEmbeddedCover: false,
-        fileBlob: file,
-        audioUrl: null, // Lazy-created on demand to save hundreds of MBs in RAM
-        isLocal: true,
-        addedAt: timestamp + i
-      });
+    // 1. Build fast lookup map from already cached IndexedDB tracks
+    const existingTracks = await this.loadStoredTracks();
+    const existingMap = new Map();
+    for (let i = 0; i < existingTracks.length; i++) {
+      const et = existingTracks[i];
+      const key = `${et.fileBlob?.name || et.title}_${et.fileBlob?.size || 0}`;
+      existingMap.set(key, et);
     }
 
-    // Immediately notify UI to display the song list
+    const unparsedTracks = [];
+
+    // Phase 1: Rapid track generation & smart reuse (<30ms)
+    for (let i = 0; i < total; i++) {
+      const file = files[i];
+      const key = `${file.name}_${file.size}`;
+      const cached = existingMap.get(key);
+
+      if (cached) {
+        // SMART REUSE: Track is already parsed and in DB -> Re-attach fresh File reference
+        cached.fileBlob = file;
+        cached.audioUrl = null;
+        if (cached.coverBlob && !cached.coverUrl) {
+          cached.coverUrl = URL.createObjectURL(cached.coverBlob);
+        }
+        initialTracks.push(cached);
+      } else {
+        // New track needing fast metadata extraction
+        const id = 'local_' + timestamp + '_' + i + '_' + Math.random().toString(36).substr(2, 6);
+        const cleanName = file.name.replace(/\.[^/.]+$/, '');
+        let artist = 'Unknown';
+        let title = cleanName;
+
+        if (cleanName.includes(' - ')) {
+          const parts = cleanName.split(' - ');
+          artist = parts[0].trim() || 'Unknown';
+          title = parts.slice(1).join(' - ').trim() || cleanName;
+        }
+
+        const newTrack = {
+          id: id,
+          title: title,
+          artist: artist,
+          album: 'Unknown Album',
+          year: '',
+          duration: 0,
+          formattedDuration: '0:00',
+          coverUrl: 'assets/M logo for music items.png',
+          coverBlob: null,
+          hasEmbeddedCover: false,
+          fileBlob: file,
+          audioUrl: null,
+          isLocal: true,
+          addedAt: timestamp + i
+        };
+
+        initialTracks.push(newTrack);
+        unparsedTracks.push(newTrack);
+      }
+    }
+
+    // Sort songs immediately: Special Characters -> Numbers -> A-Z
+    FileManager.sortTracks(initialTracks);
+
+    // Immediately render sorted songs in the UI
     if (options.onInitialTracksReady) {
       options.onInitialTracksReady(initialTracks);
     }
 
-    // Phase 2: Controlled micro-batch processing to prevent memory pressure
+    // Phase 2: Prioritize visible tracks, then process remaining in parallel batches
     const isMobile = window.innerWidth <= 900 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    const BATCH_SIZE = isMobile ? 6 : 14;
-    const DB_BATCH_SIZE = isMobile ? 20 : 40;
-    const YIELD_MS = isMobile ? 30 : 10;
+    const BATCH_SIZE = isMobile ? 12 : 24;
+    const DB_BATCH_SIZE = isMobile ? 40 : 80;
 
-    let processedCount = 0;
+    let processedCount = total - unparsedTracks.length;
     let pendingDBSave = [];
 
     if (options.onProgress) {
-      options.onProgress({ processed: 0, total, remaining: total, percent: 0 });
+      const percent = Math.min(100, Math.round((processedCount / total) * 100));
+      options.onProgress({ processed: processedCount, total, remaining: unparsedTracks.length, percent });
     }
 
-    for (let i = 0; i < total; i += BATCH_SIZE) {
-      const chunk = initialTracks.slice(i, i + BATCH_SIZE);
+    // Sort unparsed tracks to match visible order
+    FileManager.sortTracks(unparsedTracks);
+
+    for (let i = 0; i < unparsedTracks.length; i += BATCH_SIZE) {
+      const chunk = unparsedTracks.slice(i, i + BATCH_SIZE);
       const updatedChunk = [];
 
       await Promise.all(chunk.map(async (track) => {
@@ -217,13 +282,13 @@ class FileManager {
       }
 
       // Save to IndexedDB in bulk transactions
-      if (pendingDBSave.length >= DB_BATCH_SIZE || i + BATCH_SIZE >= total) {
+      if (pendingDBSave.length >= DB_BATCH_SIZE || i + BATCH_SIZE >= unparsedTracks.length) {
         await this.saveTracksBatchToDB(pendingDBSave);
         pendingDBSave = [];
       }
 
-      // Yield to main thread and give Garbage Collector time to free memory
-      await new Promise(r => setTimeout(r, YIELD_MS));
+      // Micro-task yield to main thread so animations and scrolling stay 60fps
+      await new Promise(r => setTimeout(r, 0));
     }
 
     if (pendingDBSave.length > 0) {
@@ -268,7 +333,7 @@ class FileManager {
   }
 
   /**
-   * Fast Load stored tracks from IndexedDB with persistent cover artwork restoration
+   * Fast Load stored tracks from IndexedDB with persistent cover artwork restoration & sorting
    */
   async loadStoredTracks() {
     if (!this.db) await this.initDB();
@@ -295,6 +360,8 @@ class FileManager {
               track.hasEmbeddedCover = false;
             }
           }
+          // Ensure stored tracks are returned in sorted order
+          FileManager.sortTracks(tracks);
           resolve(tracks);
         };
 

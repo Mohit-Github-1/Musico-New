@@ -1,14 +1,14 @@
 /**
- * Musico - ID3 & Audio Metadata Parser (Low-Memory Optimized)
- * Extracts Title, Artist, Album, Year, and Compressed Embedded Album Art directly from local audio files.
+ * Musico - ID3 & Audio Metadata Parser (High-Speed & Low-Memory Optimized)
+ * Optimized slicing, fast header inspection, and smart image compression.
  */
 
 const ID3Parser = {
   /**
-   * Compress cover artwork to compact dimensions (max 320px) to prevent Android/Mobile low-memory crashes
+   * Fast cover compression only for very large raw images (>150KB)
    */
   async compressImageBlob(rawBlob, maxDim = 320) {
-    if (!rawBlob || rawBlob.size < 45000) return rawBlob;
+    if (!rawBlob || rawBlob.size < 150000) return rawBlob; // Already lightweight, skip canvas overhead
     try {
       if ('createImageBitmap' in window) {
         const bitmap = await createImageBitmap(rawBlob);
@@ -29,53 +29,65 @@ const ID3Parser = {
           return new Promise((resolve) => {
             canvas.toBlob((resizedBlob) => {
               resolve(resizedBlob || rawBlob);
-            }, 'image/jpeg', 0.82);
+            }, 'image/jpeg', 0.80);
           });
         }
         bitmap.close();
       }
     } catch (e) {
-      // Silently return rawBlob if compression is unsupported
+      // Silently return rawBlob if compression fails
     }
     return rawBlob;
   },
 
   /**
-   * Parse metadata from an audio File or Blob
+   * Parse metadata with minimal I/O slicing
    * @param {File|Blob} file 
    * @returns {Promise<Object>} Metadata object
    */
   async parse(file) {
     const fallback = this.getFallbackMetadata(file.name || 'Unknown Track');
     try {
-      // 1. Read small slice (first 192KB) to inspect ID3v2 header without loading whole file
-      const sliceSize = Math.min(196608, file.size);
-      const headerBuffer = await file.slice(0, sliceSize).arrayBuffer();
-      const id3v2 = this.parseID3v2(headerBuffer);
+      const lowerName = (file.name || '').toLowerCase();
 
-      if (id3v2 && (id3v2.title || id3v2.artist || id3v2.coverBlob)) {
-        let coverBlob = id3v2.coverBlob;
-        let coverUrl = null;
-        if (coverBlob) {
-          coverBlob = await this.compressImageBlob(coverBlob, 320);
-          coverUrl = URL.createObjectURL(coverBlob);
+      // 1. Fast ID3v2 inspection (Read 10 bytes first to get exact tag size)
+      if (file.size >= 10) {
+        const header10Buffer = await file.slice(0, 10).arrayBuffer();
+        const view10 = new DataView(header10Buffer);
+        const isID3 = String.fromCharCode(view10.getUint8(0), view10.getUint8(1), view10.getUint8(2)) === 'ID3';
+
+        if (isID3) {
+          const tagSize = this.readSynchsafeInt(view10, 6);
+          const fullTagSize = Math.min(file.size, 10 + tagSize);
+          // Slice only the exact ID3 tag buffer
+          const id3Buffer = await file.slice(0, fullTagSize).arrayBuffer();
+          const id3v2 = this.parseID3v2(id3Buffer);
+
+          if (id3v2 && (id3v2.title || id3v2.artist || id3v2.coverBlob)) {
+            let coverBlob = id3v2.coverBlob;
+            let coverUrl = null;
+            if (coverBlob) {
+              coverBlob = await this.compressImageBlob(coverBlob, 320);
+              coverUrl = URL.createObjectURL(coverBlob);
+            }
+
+            return {
+              title: id3v2.title || fallback.title,
+              artist: id3v2.artist || fallback.artist,
+              album: id3v2.album || fallback.album,
+              year: id3v2.year || '',
+              coverUrl: coverUrl,
+              coverBlob: coverBlob,
+              duration: 0
+            };
+          }
         }
-
-        return {
-          title: id3v2.title || fallback.title,
-          artist: id3v2.artist || fallback.artist,
-          album: id3v2.album || fallback.album,
-          year: id3v2.year || '',
-          coverUrl: coverUrl,
-          coverBlob: coverBlob,
-          duration: 0
-        };
       }
 
-      // 2. Try FLAC / OGG picture & metadata block
-      const lowerName = (file.name || '').toLowerCase();
+      // 2. FLAC / OGG tags
       if (lowerName.endsWith('.flac') || lowerName.endsWith('.ogg')) {
-        const flacMeta = this.parseFLAC(headerBuffer);
+        const flacBuffer = await file.slice(0, Math.min(file.size, 131072)).arrayBuffer();
+        const flacMeta = this.parseFLAC(flacBuffer);
         if (flacMeta) {
           let coverBlob = flacMeta.coverBlob;
           let coverUrl = null;
@@ -95,9 +107,10 @@ const ID3Parser = {
         }
       }
 
-      // 3. Try M4A / MP4 atom tags (covr, ©nam, ©ART, ©alb)
+      // 3. M4A / MP4 tags
       if (lowerName.endsWith('.m4a') || lowerName.endsWith('.aac') || lowerName.endsWith('.mp4')) {
-        const m4aMeta = this.parseM4A(headerBuffer);
+        const m4aBuffer = await file.slice(0, Math.min(file.size, 131072)).arrayBuffer();
+        const m4aMeta = this.parseM4A(m4aBuffer);
         if (m4aMeta) {
           let coverBlob = m4aMeta.coverBlob;
           let coverUrl = null;
@@ -117,7 +130,7 @@ const ID3Parser = {
         }
       }
 
-      // 4. Try ID3v1 at the end of the file (last 128 bytes)
+      // 4. ID3v1 (last 128 bytes)
       if (file.size > 128) {
         const footerBuffer = await file.slice(file.size - 128).arrayBuffer();
         const id3v1 = this.parseID3v1(footerBuffer);
@@ -147,7 +160,6 @@ const ID3Parser = {
     const view = new DataView(buffer);
     if (buffer.byteLength < 10) return null;
 
-    // Check "ID3" identifier
     const id3 = String.fromCharCode(view.getUint8(0), view.getUint8(1), view.getUint8(2));
     if (id3 !== 'ID3') return null;
 
@@ -304,7 +316,7 @@ const ID3Parser = {
         const blockSize = (view.getUint8(offset + 1) << 16) | (view.getUint8(offset + 2) << 8) | view.getUint8(offset + 3);
         offset += 4;
 
-        if (blockType === 6) { // PICTURE block
+        if (blockType === 6) {
           const mimeLen = view.getUint32(offset + 4);
           let mime = '';
           for (let i = 0; i < mimeLen; i++) {
@@ -335,10 +347,10 @@ const ID3Parser = {
     try {
       const bytes = new Uint8Array(buffer);
       for (let i = 0; i < bytes.length - 8; i++) {
-        if (bytes[i] === 0x63 && bytes[i + 1] === 0x6F && bytes[i + 2] === 0x76 && bytes[i + 3] === 0x72) { // "covr"
+        if (bytes[i] === 0x63 && bytes[i + 1] === 0x6F && bytes[i + 2] === 0x76 && bytes[i + 3] === 0x72) {
           let dataOffset = i + 4;
           while (dataOffset < bytes.length - 8) {
-            if (bytes[dataOffset] === 0x64 && bytes[dataOffset + 1] === 0x61 && bytes[dataOffset + 2] === 0x74 && bytes[dataOffset + 3] === 0x61) { // "data"
+            if (bytes[dataOffset] === 0x64 && bytes[dataOffset + 1] === 0x61 && bytes[dataOffset + 2] === 0x74 && bytes[dataOffset + 3] === 0x61) {
               const dataLen = (bytes[dataOffset - 4] << 24) | (bytes[dataOffset - 3] << 16) | (bytes[dataOffset - 2] << 8) | bytes[dataOffset - 1];
               const imgStart = dataOffset + 12;
               const imgLen = dataLen - 16;

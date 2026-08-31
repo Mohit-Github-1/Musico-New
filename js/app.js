@@ -110,6 +110,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const savedTracks = await fileManager.loadStoredTracks();
     if (savedTracks && savedTracks.length > 0) {
       allTracks = [...savedTracks];
+      FileManager.sortTracks(allTracks);
       renderSongList();
 
       // Restore last played song if it exists in the library, otherwise default to first song
@@ -129,7 +130,42 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // Render song cards in right panel
+  // Generate Song Card HTML
+  function generateSongCardHTML(track, idx) {
+    const isCurrent = player.currentTrack && player.currentTrack.id === track.id;
+    const isPlaying = isCurrent && player.isPlaying;
+    const isFallback = !track.coverUrl || 
+                       track.coverUrl.includes('M logo for music items') ||
+                       track.coverUrl.includes('MlogoforMusicItems') ||
+                       track.coverUrl.includes('Mlogo.png') || 
+                       track.coverUrl.includes('Group 4') || 
+                       track.coverUrl.trim() === '';
+    const coverSrc = isFallback ? 'assets/M logo for music items.png' : track.coverUrl;
+
+    return `
+      <div class="song-card ${isCurrent ? 'active' : ''} ${isPlaying ? 'playing' : ''}" data-id="${track.id}" data-index="${idx}">
+        <div class="song-card-left">
+          <div class="song-thumb-wrapper">
+            <img src="${coverSrc}" alt="${escapeHtml(track.title)}" class="song-thumb ${isFallback ? 'fallback-logo' : ''}" loading="lazy" onerror="this.onerror=null;this.src='assets/M logo for music items.png';this.className='song-thumb fallback-logo';" />
+            <div class="song-play-overlay">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+              </svg>
+            </div>
+          </div>
+          <div class="song-info">
+            <span class="song-title">${escapeHtml(track.title)}</span>
+            <span class="song-artist">//${escapeHtml(track.artist || 'Unknown')}</span>
+          </div>
+        </div>
+        <button class="song-options-btn" data-id="${track.id}" aria-label="Song options" title="Options">
+          <img src="${currentTheme === 'dark' ? 'assets/Dark Mode/DarkModeOptionsbtn.svg' : 'assets/OptionsThreeDots.svg'}" alt="Options" class="options-icon" />
+        </button>
+      </div>
+    `;
+  }
+
+  // Render song cards in right panel (High-Performance Windowed Virtualization for 1,000–5,000+ songs)
   function renderSongList() {
     if (!songsListContainer) return;
 
@@ -165,42 +201,55 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     songsListContainer.className = isGridView ? 'songs-list grid-view' : 'songs-list';
 
-    songsListContainer.innerHTML = filtered.map((track, idx) => {
-      const isCurrent = player.currentTrack && player.currentTrack.id === track.id;
-      const isPlaying = isCurrent && player.isPlaying;
-      const isFallback = !track.coverUrl || 
-                         track.coverUrl.includes('M logo for music items') ||
-                         track.coverUrl.includes('MlogoforMusicItems') ||
-                         track.coverUrl.includes('Mlogo.png') || 
-                         track.coverUrl.includes('Group 4') || 
-                         track.coverUrl.trim() === '';
-      const coverSrc = isFallback ? 'assets/M logo for music items.png' : track.coverUrl;
+    const isMobile = window.innerWidth <= 900;
+    const rowHeight = isMobile ? 60 : 64;
+    const VIRTUAL_THRESHOLD = 50;
 
-      return `
-        <div class="song-card ${isCurrent ? 'active' : ''} ${isPlaying ? 'playing' : ''}" data-id="${track.id}" data-index="${idx}">
-          <div class="song-card-left">
-            <div class="song-thumb-wrapper">
-              <img src="${coverSrc}" alt="${escapeHtml(track.title)}" class="song-thumb ${isFallback ? 'fallback-logo' : ''}" loading="lazy" onerror="this.onerror=null;this.src='assets/M logo for music items.png';this.className='song-thumb fallback-logo';" />
-              <div class="song-play-overlay">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
-                  <polygon points="5 3 19 12 5 21 5 3"></polygon>
-                </svg>
-              </div>
-            </div>
-            <div class="song-info">
-              <span class="song-title">${escapeHtml(track.title)}</span>
-              <span class="song-artist">//${escapeHtml(track.artist || 'Unknown')}</span>
-            </div>
-          </div>
-          <button class="song-options-btn" data-id="${track.id}" aria-label="Song options" title="Options">
-            <img src="${currentTheme === 'dark' ? 'assets/Dark Mode/DarkModeOptionsbtn.svg' : 'assets/OptionsThreeDots.svg'}" alt="Options" class="options-icon" />
-          </button>
-        </div>
+    if (isGridView || filtered.length <= VIRTUAL_THRESHOLD) {
+      songsListContainer.innerHTML = filtered.map((track, idx) => generateSongCardHTML(track, idx)).join('');
+    } else {
+      // List Virtualization: only renders cards in viewport + buffer
+      const scrollTop = songsListContainer.scrollTop || 0;
+      const viewportHeight = songsListContainer.clientHeight || 600;
+      const visibleCount = Math.ceil(viewportHeight / rowHeight);
+      const buffer = 15;
+
+      const startIndex = Math.max(0, Math.floor(scrollTop / rowHeight) - buffer);
+      const endIndex = Math.min(filtered.length, startIndex + visibleCount + buffer * 2);
+
+      const topHeight = startIndex * rowHeight;
+      const bottomHeight = Math.max(0, (filtered.length - endIndex) * rowHeight);
+
+      const visibleCards = [];
+      for (let i = startIndex; i < endIndex; i++) {
+        visibleCards.push(generateSongCardHTML(filtered[i], i));
+      }
+
+      songsListContainer.innerHTML = `
+        <div style="height:${topHeight}px; width:100%; flex-shrink:0; pointer-events:none;"></div>
+        ${visibleCards.join('')}
+        <div style="height:${bottomHeight}px; width:100%; flex-shrink:0; pointer-events:none;"></div>
       `;
-    }).join('');
+    }
 
     // Update custom mobile scrollbar position
     requestAnimationFrame(updateMobileScrollbarThumb);
+  }
+
+  // Smooth scroll listener for Virtual List updates
+  if (songsListContainer) {
+    let isVirtualScrollPending = false;
+    songsListContainer.addEventListener('scroll', () => {
+      if (!isVirtualScrollPending) {
+        isVirtualScrollPending = true;
+        requestAnimationFrame(() => {
+          isVirtualScrollPending = false;
+          if (!isGridView && allTracks.length > 50) {
+            renderSongList();
+          }
+        });
+      }
+    }, { passive: true });
   }
 
   // Delegated Event Listener for song cards & option buttons (High efficiency for 1,000–3,000+ items)
@@ -250,7 +299,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         },
         onInitialTracksReady: (initialBatch) => {
           if (initialBatch && initialBatch.length > 0) {
-            allTracks = [...initialBatch, ...allTracks];
+            allTracks = [...initialBatch];
+            FileManager.sortTracks(allTracks);
             renderSongList();
             initialRendered = true;
 
@@ -275,7 +325,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       hideLoadingProgress();
 
       if (!initialRendered && newTracks && newTracks.length > 0) {
-        allTracks = [...newTracks, ...allTracks];
+        allTracks = [...newTracks];
+        FileManager.sortTracks(allTracks);
         renderSongList();
         if (!player.currentTrack && allTracks.length > 0) {
           player.setQueue(allTracks, 0, false);
