@@ -2,7 +2,7 @@
  * Musico - PWA Offline Service Worker
  */
 
-const CACHE_NAME = 'musico-cache-v2';
+const CACHE_NAME = 'musico-cache-v3';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -12,6 +12,7 @@ const STATIC_ASSETS = [
   './js/player.js',
   './js/fileManager.js',
   './js/id3Parser.js',
+  './assets/app icon main.png',
   './assets/Mlogo.png',
   './assets/Mlogowithbg.png',
   './assets/M logo for music items.png',
@@ -37,7 +38,13 @@ const STATIC_ASSETS = [
   './assets/Dark Mode/DarkModeSearchIcon.png',
   './assets/Dark Mode/DarkModeSettings.png',
   './assets/Dark Mode/DarkModeThreeDots.png',
+  './assets/icons/icon-72.png',
+  './assets/icons/icon-96.png',
+  './assets/icons/icon-128.png',
+  './assets/icons/icon-144.png',
+  './assets/icons/icon-152.png',
   './assets/icons/icon-192.png',
+  './assets/icons/icon-384.png',
   './assets/icons/icon-512.png',
   './assets/icons/icon-maskable-512.png'
 ];

@@ -11,6 +11,11 @@
   "categories": ["music", "entertainment", "utilities"],
   "icons": [
     {
+      "src": "assets/app icon main.png",
+      "sizes": "77x77",
+      "type": "image/png"
+    },
+    {
       "src": "assets/icons/icon-72.png",
       "sizes": "72x72",
       "type": "image/png"
