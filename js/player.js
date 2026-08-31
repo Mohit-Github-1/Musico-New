@@ -156,6 +156,7 @@ class MusicPlayer {
     }
 
     this.updateNowPlayingUI();
+    this.updatePlayPauseUI();
     this.updateProgressUI();
   }
 
@@ -529,6 +530,11 @@ class MusicPlayer {
         mobileFullAlbumArt.src = this.currentTrack.coverUrl;
         mobileFullAlbumArt.className = 'mobile-full-art';
       }
+    }
+
+    const mobilePopup = document.getElementById('mobileCompactPopup');
+    if (mobilePopup) {
+      mobilePopup.classList.toggle('visible', Boolean(this.currentTrack));
     }
 
     if (window.updateMobileUpNextUI) {
