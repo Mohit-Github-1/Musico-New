@@ -28,6 +28,7 @@ const STATIC_ASSETS = [
   './assets/Plausebtn.svg',
   './assets/Nxtbtn.svg',
   './assets/OptionsThreeDots.svg',
+  './assets/Options 3 Dots.svg',
   './assets/icons/icon-192.png',
   './assets/icons/icon-512.png',
   './assets/icons/icon-maskable-512.png'

@@ -1981,10 +1981,8 @@ body.drag-over::after {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(255, 255, 255, 0.45);
-    padding: 4px 8px;
-    border-radius: 10px;
-    backdrop-filter: blur(4px);
+    background: transparent;
+    padding: 4px;
     border: none;
     cursor: pointer;
     z-index: 10;
