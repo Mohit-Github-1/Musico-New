@@ -215,7 +215,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       songsListContainer.innerHTML = `
         <div class="empty-state">
           <div class="empty-state-icon">
-            <img src="Assets/ADD button with no BG.png" alt="Add Music" class="empty-state-img" />
+            <img src="assets/ADD button with no BG.png" alt="Add Music" class="empty-state-img" />
           </div>
           <h3 class="empty-title">No Songs</h3>
           <p class="empty-subtitle">Click <strong>+</strong> or the button below to select a music folder from your computer.</p>
@@ -270,13 +270,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   // =========================================================================
 
   function getRandomCoverFromPlaylist(playlist) {
-    if (!playlist || !playlist.trackIds || playlist.trackIds.length === 0) return 'Assets/M logo.png';
+    if (!playlist || !playlist.trackIds || playlist.trackIds.length === 0) return 'assets/M logo.png';
     const randomTrackId = playlist.trackIds[Math.floor(Math.random() * playlist.trackIds.length)];
     const track = allTracks.find(t => t.id === randomTrackId);
     if (track && track.coverUrl && !track.coverUrl.includes('M logo for music items') && !track.coverUrl.includes('Group 4')) {
       return track.coverUrl;
     }
-    return 'Assets/M logo.png';
+    return 'assets/M logo.png';
   }
 
   function renderPlaylistFeaturedCards() {
@@ -300,8 +300,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!playlists || playlists.length === 0) {
       if (featuredTitle1) featuredTitle1.textContent = 'No Playlist';
       if (featuredTitle2) featuredTitle2.textContent = 'No Playlist';
-      if (featuredImg1) featuredImg1.src = 'Assets/M logo.png';
-      if (featuredImg2) featuredImg2.src = 'Assets/M logo.png';
+      if (featuredImg1) featuredImg1.src = 'assets/M logo.png';
+      if (featuredImg2) featuredImg2.src = 'assets/M logo.png';
       return;
     }
 
@@ -379,7 +379,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       songsListContainer.innerHTML = `
         <div class="empty-state">
           <div class="empty-state-icon">
-            <img src="Assets/ADD button with no BG.png" alt="Create Playlist" class="empty-state-img" />
+            <img src="assets/ADD button with no BG.png" alt="Create Playlist" class="empty-state-img" />
           </div>
           <h3 class="empty-title">No Playlists</h3>
           <p class="empty-subtitle">Create your first playlist to organize your favorite songs.</p>
@@ -450,7 +450,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       songsListContainer.innerHTML = `
         <div class="empty-state">
           <div class="empty-state-icon">
-            <img src="Assets/ADD button with no BG.png" alt="Add Songs" class="empty-state-img" />
+            <img src="assets/ADD button with no BG.png" alt="Add Songs" class="empty-state-img" />
           </div>
           <h3 class="empty-title">Empty Playlist</h3>
           <p class="empty-subtitle">Use <strong>Three-Dots → Add to Playlist</strong> or <strong>Select</strong> from All Songs to add music here.</p>
