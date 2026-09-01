@@ -24,13 +24,46 @@ class MusicPlayer {
     this.analyser = null;
     this.sourceNode = null;
     this.gainNode = null;
+    this.compressor = null;
     this.isAudioCtxInitialized = false;
 
     this.setupAudioListeners();
+    
+    // Dynamically adjust effective volume if screen orientation or viewport changes
+    window.addEventListener('resize', () => {
+      this.updateEffectiveVolume();
+    });
   }
 
   /**
-   * Initialize Web Audio API nodes (on first user interaction)
+   * Determine if running in a mobile viewport or mobile device environment
+   */
+  isMobileDevice() {
+    return window.innerWidth <= 900 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(navigator.userAgent);
+  }
+
+  /**
+   * Apply effective volume and amplification.
+   * On Mobile: Scale volume up to ~1.2x (120%) gain when slider is at maximum.
+   * On PC: Standard 1.0x (100%) maximum output.
+   */
+  updateEffectiveVolume() {
+    const isMobile = this.isMobileDevice();
+    const multiplier = isMobile ? 1.2 : 1.0;
+    const effectiveGain = this.volume * multiplier;
+
+    if (this.gainNode && this.audioCtx) {
+      this.gainNode.gain.setValueAtTime(effectiveGain, this.audioCtx.currentTime);
+      // Keep underlying media element at full scale when routed through Web Audio gain node
+      this.audio.volume = 1.0;
+    } else {
+      // Fallback before Web Audio initialization
+      this.audio.volume = Math.max(0, Math.min(1, this.volume));
+    }
+  }
+
+  /**
+   * Initialize Web Audio API nodes with safe transparent dynamics compressor
    */
   initWebAudio() {
     if (this.isAudioCtxInitialized) return;
@@ -42,14 +75,23 @@ class MusicPlayer {
       this.analyser.smoothingTimeConstant = 0.8;
 
       this.gainNode = this.audioCtx.createGain();
-      this.gainNode.gain.setValueAtTime(this.volume, this.audioCtx.currentTime);
+
+      // Soft-knee transparent limiter / compressor to prevent digital clipping when amplified
+      this.compressor = this.audioCtx.createDynamicsCompressor();
+      this.compressor.threshold.setValueAtTime(-1.0, this.audioCtx.currentTime);
+      this.compressor.knee.setValueAtTime(6.0, this.audioCtx.currentTime);
+      this.compressor.ratio.setValueAtTime(16.0, this.audioCtx.currentTime);
+      this.compressor.attack.setValueAtTime(0.003, this.audioCtx.currentTime);
+      this.compressor.release.setValueAtTime(0.25, this.audioCtx.currentTime);
 
       this.sourceNode = this.audioCtx.createMediaElementSource(this.audio);
       this.sourceNode.connect(this.gainNode);
-      this.gainNode.connect(this.analyser);
+      this.gainNode.connect(this.compressor);
+      this.compressor.connect(this.analyser);
       this.analyser.connect(this.audioCtx.destination);
 
       this.isAudioCtxInitialized = true;
+      this.updateEffectiveVolume();
       this.startVisualizerLoop();
     } catch (e) {
       console.warn('Web Audio API could not be initialized:', e);
@@ -265,10 +307,7 @@ class MusicPlayer {
    */
   setVolume(val) {
     this.volume = Math.max(0, Math.min(1, val));
-    this.audio.volume = this.volume;
-    if (this.gainNode && this.audioCtx) {
-      this.gainNode.gain.setValueAtTime(this.volume, this.audioCtx.currentTime);
-    }
+    this.updateEffectiveVolume();
   }
 
   /**
