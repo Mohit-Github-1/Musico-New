@@ -487,10 +487,10 @@ html, body {
 /* EXACT Centered Original M Logo Fallback in Large Player (Approximately same visual size as top-left logo) */
 .album-art-img.fallback-art,
 .album-art-img.default-empty-art {
-  width: 72px !important;
-  height: 72px !important;
-  max-width: 32% !important;
-  max-height: 32% !important;
+  width: 76px !important;
+  height: 76px !important;
+  max-width: 35% !important;
+  max-height: 35% !important;
   object-fit: contain !important;
   border-radius: 0 !important;
   margin: auto !important;
@@ -997,13 +997,24 @@ html, body {
 .empty-state-icon {
   width: 64px;
   height: 64px;
-  background-color: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background-color: transparent;
+  border: 2px solid #FFFFFF;
   border-radius: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 16px;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.empty-state-icon img,
+.empty-state-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  border-radius: 18px;
 }
 
 .empty-title {
@@ -1049,6 +1060,32 @@ html, body {
 
 .empty-add-btn:active {
   transform: scale(0.96);
+}
+
+/* Mobile Light Mode Empty State Color Overrides */
+@media (max-width: 900px) {
+  body:not([data-theme="dark"]) .empty-title,
+  body[data-theme="light"] .empty-title {
+    color: #000000;
+  }
+
+  body:not([data-theme="dark"]) .empty-subtitle strong,
+  body[data-theme="light"] .empty-subtitle strong {
+    color: #000000;
+  }
+
+  body:not([data-theme="dark"]) .empty-add-btn,
+  body[data-theme="light"] .empty-add-btn {
+    background: #000000;
+    color: #FFFFFF;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  }
+
+  body:not([data-theme="dark"]) .empty-add-btn:hover,
+  body[data-theme="light"] .empty-add-btn:hover {
+    background: #1A1A1A;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  }
 }
 
 /* ==========================================================================
@@ -1969,6 +2006,8 @@ body.drag-over::after {
   .mobile-full-art.fallback-art {
     width: 76px !important;
     height: 76px !important;
+    max-width: 35% !important;
+    max-height: 35% !important;
     object-fit: contain !important;
     border-radius: 0 !important;
     margin: auto;
@@ -2933,6 +2972,8 @@ body[data-theme="dark"] .context-item.delete {
   .mobile-full-art.fallback-art {
     width: 52px !important;
     height: 52px !important;
+    max-width: 35% !important;
+    max-height: 35% !important;
   }
 
   .mobile-full-options-btn {

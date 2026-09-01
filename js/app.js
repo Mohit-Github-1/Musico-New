@@ -187,7 +187,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       songsListContainer.innerHTML = `
         <div class="empty-state">
           <div class="empty-state-icon">
-            <img src="assets/Addbtn.png" alt="Add Music" width="36" height="36" />
+            <img src="Assets/ADD button with no BG.png" alt="Add Music" class="empty-state-img" />
           </div>
           <h3 class="empty-title">No Songs</h3>
           <p class="empty-subtitle">Click <strong>+</strong> or the button below to select a music folder from your computer.</p>

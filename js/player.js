@@ -475,7 +475,7 @@ class MusicPlayer {
       if (artistNameElem) artistNameElem.textContent = 'Unknown';
       if (titleElem) titleElem.textContent = 'No Songs';
       if (albumArtElem) {
-        albumArtElem.src = 'assets/Mlogowithbg.png';
+        albumArtElem.src = 'Assets/M logo.png';
         albumArtElem.alt = 'Musico - No Song Playing';
         albumArtElem.className = 'album-art-img fallback-art';
       }
@@ -487,7 +487,7 @@ class MusicPlayer {
       if (mobileFullArtist) mobileFullArtist.textContent = 'Unknown';
       if (mobileFullTitle) mobileFullTitle.textContent = 'No Songs';
       if (mobileFullAlbumArt) {
-        mobileFullAlbumArt.src = 'assets/Mlogowithbg.png';
+        mobileFullAlbumArt.src = 'Assets/M logo.png';
         mobileFullAlbumArt.className = 'mobile-full-art fallback-art';
       }
       return;
@@ -514,7 +514,7 @@ class MusicPlayer {
     // Album Arts
     if (albumArtElem) {
       if (isFallback) {
-        albumArtElem.src = 'assets/Mlogowithbg.png';
+        albumArtElem.src = 'Assets/M logo.png';
         albumArtElem.alt = titleText;
         albumArtElem.className = 'album-art-img fallback-art';
       } else {
@@ -536,7 +536,7 @@ class MusicPlayer {
 
     if (mobileFullAlbumArt) {
       if (isFallback) {
-        mobileFullAlbumArt.src = 'assets/Mlogowithbg.png';
+        mobileFullAlbumArt.src = 'Assets/M logo.png';
         mobileFullAlbumArt.className = 'mobile-full-art fallback-art';
       } else {
         mobileFullAlbumArt.src = this.currentTrack.coverUrl;

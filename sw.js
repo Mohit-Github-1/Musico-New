@@ -1,8 +1,8 @@
 /**
- * Musico - PWA Offline Service Worker (v7)
+ * Musico - PWA Offline Service Worker (v14)
  */
 
-const CACHE_NAME = 'musico-cache-v7';
+const CACHE_NAME = 'musico-cache-v14';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -12,6 +12,10 @@ const STATIC_ASSETS = [
   './js/player.js',
   './js/fileManager.js',
   './js/id3Parser.js',
+  './Assets/ADD%20button%20with%20no%20BG.png',
+  './assets/ADD%20button%20with%20no%20BG.png',
+  './Assets/M%20logo.png',
+  './assets/M%20logo.png',
   './assets/app%20icon%20main.png',
   './assets/App%20Icon%20Main%20for%20Mobile%20Only.png',
   './assets/Mlogo.png',
