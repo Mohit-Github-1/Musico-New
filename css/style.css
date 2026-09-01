@@ -3236,3 +3236,702 @@ body[data-theme="dark"] .loading-progress-track {
 body[data-theme="dark"] .loading-progress-fill {
   background: linear-gradient(90deg, #FFFFFF, #B0B0B0);
 }
+
+/* ==========================================================================
+   6. PLAYLIST FEATURE SYSTEM STYLES (PC & Mobile)
+   ========================================================================== */
+
+/* PC Graphical Playlist Left-Side Section */
+.playlist-left-section {
+  display: none;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  justify-content: flex-start;
+  padding: 0 4px;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.player-body.playlist-view-active > .artist-now-playing,
+.player-body.playlist-view-active > .album-art-container,
+.player-body.playlist-view-active > .player-bottom-progress-bar,
+.player-body.playlist-view-active > .playback-controls-row {
+  display: none !important;
+}
+
+.player-body.playlist-view-active > .playlist-left-section {
+  display: flex !important;
+}
+
+.playlist-now-playing-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+  min-height: 28px;
+}
+
+.playlist-current-title {
+  font-family: var(--font-heading);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-dark);
+  letter-spacing: -0.3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Featured Two Playlists Graphic Structure (Ref. Playlist Interface.png) */
+.playlist-featured-container {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 12px 0 20px 0;
+  min-height: 210px;
+  color: var(--text-dark);
+}
+
+.featured-line-left {
+  width: 22px;
+  height: 3.5px;
+  background-color: currentColor;
+  flex-shrink: 0;
+  margin-right: -2px;
+  border-radius: 2px;
+}
+
+.featured-item {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.featured-item.vertical-item {
+  align-items: flex-start;
+}
+
+.featured-item.landscape-item {
+  align-items: flex-start;
+  margin-top: 50px;
+}
+
+.featured-card {
+  overflow: hidden;
+  border: 3px solid #000000;
+  cursor: pointer;
+  background-color: #000000;
+  flex-shrink: 0;
+  position: relative;
+  transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.22s;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+}
+
+.featured-card:hover {
+  transform: scale(1.035);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22);
+}
+
+.featured-card-vertical {
+  width: 120px;
+  height: 175px;
+  border-radius: 18px;
+}
+
+.featured-card-landscape {
+  width: 135px;
+  height: 85px;
+  border-radius: 14px;
+}
+
+.featured-card-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.featured-card-title {
+  font-family: var(--font-body);
+  font-size: 15.5px;
+  font-weight: 500;
+  color: var(--text-dark);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+  cursor: pointer;
+}
+
+.featured-card-title.title-vertical {
+  position: absolute;
+  top: 4px;
+  left: 132px;
+  font-size: 16.5px;
+  font-weight: 500;
+}
+
+.featured-card-title.title-landscape {
+  margin-top: 6px;
+  font-size: 15px;
+}
+
+.featured-connector-wrap {
+  flex: 1;
+  height: 90px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  margin: 0 -4px;
+  pointer-events: none;
+}
+
+.featured-connector-svg {
+  width: 100%;
+  height: 100%;
+  color: currentColor;
+}
+
+.featured-line-right {
+  width: 22px;
+  height: 3.5px;
+  background-color: currentColor;
+  flex-shrink: 0;
+  margin-left: -2px;
+  border-radius: 2px;
+}
+
+/* Fav. Section on Left */
+.playlist-fav-section {
+  margin-top: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.playlist-fav-heading {
+  font-family: var(--font-heading);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-dark);
+  margin-bottom: 6px;
+  letter-spacing: -0.2px;
+}
+
+.playlist-fav-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.playlist-fav-item {
+  font-family: var(--font-body);
+  font-size: 14.5px;
+  font-weight: 500;
+  color: var(--text-dark);
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.15s;
+  opacity: 0.85;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 260px;
+}
+
+.playlist-fav-item:hover {
+  opacity: 1;
+  text-decoration: underline;
+  transform: translateX(2px);
+}
+
+.playlist-fav-empty {
+  font-size: 13.5px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Playlist Cards List (Right Column) */
+.playlist-card {
+  height: 64px;
+  min-height: 64px;
+  background-color: var(--card-white);
+  border-radius: var(--radius-card);
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  margin-bottom: 12px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  user-select: none;
+}
+
+.playlist-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.16);
+}
+
+.playlist-card:active {
+  transform: scale(0.99);
+}
+
+.playlist-card-left {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  overflow: hidden;
+}
+
+.playlist-card-title {
+  font-family: var(--font-heading);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-dark);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.playlist-card-count {
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.playlist-options-btn {
+  background: transparent;
+  border: none;
+  padding: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color 0.15s;
+}
+
+.playlist-options-btn:hover {
+  background-color: rgba(0, 0, 0, 0.06);
+}
+
+/* Header Action for Playlists */
+.playlist-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.playlist-back-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-heading);
+  font-size: 15px;
+  font-weight: 600;
+  color: #FFFFFF;
+  padding: 6px 12px;
+  border-radius: 8px;
+  transition: background-color 0.15s;
+}
+
+.playlist-back-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.playlist-new-btn {
+  background: #FFFFFF;
+  color: #000000;
+  border: none;
+  border-radius: var(--radius-pill);
+  padding: 8px 18px;
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 13.5px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.15);
+  margin-bottom: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.playlist-new-btn:hover {
+  background: #F0F0F0;
+  transform: translateY(-1.5px);
+  box-shadow: 0 6px 18px rgba(255, 255, 255, 0.25);
+}
+
+/* Multi-Selection Checkbox & Bar */
+.song-checkbox-wrapper {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.songs-list.select-mode .song-checkbox-wrapper {
+  display: flex;
+}
+
+.song-checkbox {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  border: 2px solid var(--text-muted);
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  pointer-events: none;
+}
+
+.song-card.selected .song-checkbox {
+  background-color: #000000;
+  border-color: #000000;
+}
+
+.song-checkbox::after {
+  content: '✓';
+  color: #FFFFFF;
+  font-size: 12px;
+  font-weight: 700;
+  display: none;
+}
+
+.song-card.selected .song-checkbox::after {
+  display: block;
+}
+
+.song-card.selected {
+  outline: 2px solid rgba(255, 255, 255, 0.6);
+}
+
+/* Floating Multi-Select Action Bar */
+.multi-select-bar {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(140px);
+  background: #000000;
+  color: #FFFFFF;
+  padding: 10px 20px;
+  border-radius: var(--radius-pill);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6);
+  z-index: 90;
+  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  pointer-events: none;
+  opacity: 0;
+}
+
+.multi-select-bar.visible {
+  transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
+  opacity: 1;
+}
+
+.multi-select-count {
+  font-family: var(--font-heading);
+  font-size: 14px;
+  font-weight: 600;
+  color: #FFFFFF;
+}
+
+.multi-select-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.multi-select-btn {
+  background: #242424;
+  color: #FFFFFF;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-pill);
+  padding: 7px 14px;
+  font-family: var(--font-heading);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.multi-select-btn:hover {
+  background: #333333;
+}
+
+.multi-select-btn.primary-btn {
+  background: #FFFFFF;
+  color: #000000;
+  border-color: #FFFFFF;
+}
+
+.multi-select-btn.primary-btn:hover {
+  background: #E8E8E8;
+}
+
+.multi-select-btn.cancel-btn {
+  background: transparent;
+  color: #8E8E93;
+  border-color: transparent;
+}
+
+.multi-select-btn.cancel-btn:hover {
+  color: #FFFFFF;
+}
+
+/* Add to Playlist Modal */
+.playlist-modal-card {
+  background: #FFFFFF;
+  border-radius: 22px;
+  padding: 24px 28px;
+  width: 90%;
+  max-width: 440px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+  color: #000000;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.playlist-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.playlist-modal-title {
+  font-family: var(--font-heading);
+  font-size: 20px;
+  font-weight: 700;
+  color: #000000;
+}
+
+.create-playlist-row {
+  margin-bottom: 16px;
+}
+
+.create-playlist-btn {
+  width: 100%;
+  padding: 12px 18px;
+  border-radius: 12px;
+  background: #000000;
+  color: #FFFFFF;
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 14.5px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.create-playlist-btn:hover {
+  background: #222222;
+}
+
+.create-playlist-input-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.playlist-name-input {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1.5px solid #D1D1D6;
+  font-family: var(--font-body);
+  font-size: 14px;
+  background: #FFFFFF;
+  color: #000000;
+}
+
+.playlist-name-input:focus {
+  outline: none;
+  border-color: #000000;
+}
+
+.create-playlist-btns-group {
+  display: flex;
+  gap: 8px;
+}
+
+.playlist-action-btn {
+  flex: 1;
+  padding: 10px;
+  border-radius: 8px;
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 13.5px;
+  cursor: pointer;
+  border: none;
+}
+
+.playlist-action-btn.confirm-btn {
+  background: #000000;
+  color: #FFFFFF;
+}
+
+.playlist-action-btn.cancel-btn {
+  background: #E5E5EA;
+  color: #000000;
+}
+
+.playlist-select-list {
+  max-height: 240px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.playlist-select-item {
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: #F2F2F7;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.playlist-select-item:hover {
+  background: #E5E5EA;
+}
+
+.playlist-select-name {
+  font-family: var(--font-heading);
+  font-size: 15px;
+  font-weight: 600;
+  color: #000000;
+}
+
+.playlist-select-count {
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.playlist-select-empty {
+  padding: 20px 0;
+  text-align: center;
+  font-size: 13.5px;
+  color: var(--text-muted);
+}
+
+/* ==========================================================================
+   DARK MODE OVERRIDES FOR PLAYLISTS
+   ========================================================================== */
+body[data-theme="dark"] .playlist-current-title,
+body[data-theme="dark"] .featured-card-title,
+body[data-theme="dark"] .playlist-fav-heading,
+body[data-theme="dark"] .playlist-fav-item {
+  color: #FFFFFF;
+}
+
+body[data-theme="dark"] .playlist-featured-container {
+  color: #FFFFFF;
+}
+
+body[data-theme="dark"] .featured-card {
+  border-color: #FFFFFF;
+}
+
+body[data-theme="dark"] .playlist-card {
+  background-color: #141414;
+  border: 1px solid #2C2C2E;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+
+body[data-theme="dark"] .playlist-card-title {
+  color: #FFFFFF;
+}
+
+body[data-theme="dark"] .playlist-options-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+body[data-theme="dark"] .playlist-new-btn {
+  background: #FFFFFF;
+  color: #000000;
+  box-shadow: 0 4px 16px rgba(255, 255, 255, 0.15);
+}
+
+body[data-theme="dark"] .playlist-modal-card {
+  background: #141414;
+  border: 1px solid #2C2C2E;
+  color: #FFFFFF;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+}
+
+body[data-theme="dark"] .playlist-modal-title {
+  color: #FFFFFF;
+}
+
+body[data-theme="dark"] .create-playlist-btn {
+  background: #FFFFFF;
+  color: #000000;
+}
+
+body[data-theme="dark"] .create-playlist-btn:hover {
+  background: #E5E5EA;
+}
+
+body[data-theme="dark"] .playlist-name-input {
+  background: #202020;
+  border-color: #333333;
+  color: #FFFFFF;
+}
+
+body[data-theme="dark"] .playlist-action-btn.confirm-btn {
+  background: #FFFFFF;
+  color: #000000;
+}
+
+body[data-theme="dark"] .playlist-action-btn.cancel-btn {
+  background: #2A2A2A;
+  color: #FFFFFF;
+}
+
+body[data-theme="dark"] .playlist-select-item {
+  background: #202020;
+}
+
+body[data-theme="dark"] .playlist-select-item:hover {
+  background: #2A2A2A;
+}
+
+body[data-theme="dark"] .playlist-select-name {
+  color: #FFFFFF;
+}
+
+body[data-theme="dark"] .song-card.selected .song-checkbox {
+  background-color: #FFFFFF;
+  border-color: #FFFFFF;
+}
+
+body[data-theme="dark"] .song-card.selected .song-checkbox::after {
+  color: #000000;
+}
+
+/* Hide PC graphical cards on Mobile screens (< 900px) */
+@media (max-width: 900px) {
+  .playlist-left-section {
+    display: none !important;
+  }
+}

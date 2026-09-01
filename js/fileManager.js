@@ -8,7 +8,7 @@ class FileManager {
   constructor() {
     this.db = null;
     this.dbName = 'MusicoDB';
-    this.dbVersion = 1;
+    this.dbVersion = 2;
     this.initDB();
   }
 
@@ -60,6 +60,10 @@ class FileManager {
         }
         if (!db.objectStoreNames.contains('settings')) {
           db.createObjectStore('settings', { keyPath: 'key' });
+        }
+        if (!db.objectStoreNames.contains('playlists')) {
+          const playlistStore = db.createObjectStore('playlists', { keyPath: 'id' });
+          playlistStore.createIndex('name', 'name', { unique: false });
         }
       };
 
@@ -451,6 +455,173 @@ class FileManager {
       return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     }
     return `${mins}:${secs.toString().padStart(2, '0')}`;
+  }
+
+  /**
+   * =========================================================================
+   * PLAYLIST SYSTEM METHODS
+   * =========================================================================
+   */
+
+  /**
+   * Get all playlists from IndexedDB (with localStorage backup)
+   */
+  async getPlaylists() {
+    if (!this.db) await this.initDB();
+    if (!this.db) {
+      return this.getPlaylistsFromLocalStorage();
+    }
+
+    return new Promise((resolve) => {
+      try {
+        if (!this.db.objectStoreNames.contains('playlists')) {
+          resolve(this.getPlaylistsFromLocalStorage());
+          return;
+        }
+        const tx = this.db.transaction('playlists', 'readonly');
+        const store = tx.objectStore('playlists');
+        const req = store.getAll();
+
+        req.onsuccess = () => {
+          const playlists = req.result || [];
+          if (playlists.length === 0) {
+            const local = this.getPlaylistsFromLocalStorage();
+            if (local.length > 0) {
+              local.forEach(p => this.savePlaylist(p));
+              resolve(local);
+              return;
+            }
+          }
+          resolve(playlists);
+        };
+
+        req.onerror = () => resolve(this.getPlaylistsFromLocalStorage());
+      } catch (e) {
+        console.warn('Error fetching playlists:', e);
+        resolve(this.getPlaylistsFromLocalStorage());
+      }
+    });
+  }
+
+  getPlaylistsFromLocalStorage() {
+    try {
+      const data = localStorage.getItem('musico_playlists');
+      return data ? JSON.parse(data) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  savePlaylistsToLocalStorage(playlists) {
+    try {
+      localStorage.setItem('musico_playlists', JSON.stringify(playlists));
+    } catch (e) {
+      console.warn('LocalStorage save error:', e);
+    }
+  }
+
+  /**
+   * Create or update a playlist
+   */
+  async savePlaylist(playlist) {
+    if (!playlist || !playlist.id) return;
+    if (!playlist.trackIds) playlist.trackIds = [];
+    if (typeof playlist.playCount !== 'number') playlist.playCount = 0;
+    if (!playlist.createdAt) playlist.createdAt = Date.now();
+
+    // Synchronize to LocalStorage immediately
+    const localPlaylists = this.getPlaylistsFromLocalStorage();
+    const idx = localPlaylists.findIndex(p => p.id === playlist.id);
+    if (idx !== -1) {
+      localPlaylists[idx] = playlist;
+    } else {
+      localPlaylists.push(playlist);
+    }
+    this.savePlaylistsToLocalStorage(localPlaylists);
+
+    // Save to IndexedDB
+    if (!this.db) await this.initDB();
+    if (!this.db || !this.db.objectStoreNames.contains('playlists')) return;
+
+    try {
+      const tx = this.db.transaction('playlists', 'readwrite');
+      tx.objectStore('playlists').put(playlist);
+    } catch (e) {
+      console.warn('Error saving playlist to DB:', e);
+    }
+  }
+
+  /**
+   * Delete a playlist from storage (Does NOT delete songs from library)
+   */
+  async deletePlaylist(playlistId) {
+    if (!playlistId) return;
+
+    // Remove from LocalStorage
+    const localPlaylists = this.getPlaylistsFromLocalStorage().filter(p => p.id !== playlistId);
+    this.savePlaylistsToLocalStorage(localPlaylists);
+
+    // Remove from IndexedDB
+    if (!this.db) await this.initDB();
+    if (!this.db || !this.db.objectStoreNames.contains('playlists')) return;
+
+    try {
+      const tx = this.db.transaction('playlists', 'readwrite');
+      tx.objectStore('playlists').delete(playlistId);
+    } catch (e) {
+      console.warn('Error deleting playlist from DB:', e);
+    }
+  }
+
+  /**
+   * Add track IDs to a playlist
+   */
+  async addTracksToPlaylist(playlistId, trackIds) {
+    if (!playlistId || !trackIds || trackIds.length === 0) return null;
+    const playlists = await this.getPlaylists();
+    const playlist = playlists.find(p => p.id === playlistId);
+    if (!playlist) return null;
+
+    const idsToAdd = Array.isArray(trackIds) ? trackIds : [trackIds];
+    if (!playlist.trackIds) playlist.trackIds = [];
+
+    // Avoid duplicate IDs in the same playlist or allow appending
+    idsToAdd.forEach(id => {
+      if (!playlist.trackIds.includes(id)) {
+        playlist.trackIds.push(id);
+      }
+    });
+
+    await this.savePlaylist(playlist);
+    return playlist;
+  }
+
+  /**
+   * Remove a single track from a playlist (Does NOT delete song from library)
+   */
+  async removeTrackFromPlaylist(playlistId, trackId) {
+    if (!playlistId || !trackId) return null;
+    const playlists = await this.getPlaylists();
+    const playlist = playlists.find(p => p.id === playlistId);
+    if (!playlist || !playlist.trackIds) return null;
+
+    playlist.trackIds = playlist.trackIds.filter(id => id !== trackId);
+    await this.savePlaylist(playlist);
+    return playlist;
+  }
+
+  /**
+   * Increment playlist play count for Fav. ranking
+   */
+  async incrementPlaylistPlayCount(playlistId) {
+    if (!playlistId) return;
+    const playlists = await this.getPlaylists();
+    const playlist = playlists.find(p => p.id === playlistId);
+    if (playlist) {
+      playlist.playCount = (playlist.playCount || 0) + 1;
+      playlist.lastPlayed = Date.now();
+      await this.savePlaylist(playlist);
+    }
   }
 }
 

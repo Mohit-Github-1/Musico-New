@@ -149,6 +149,54 @@
           <!-- Monospace Time Display -->
           <span class="player-time-display" id="playerTimeDisplay">0:00/0:00</span>
         </div>
+
+        <!-- PC Graphical Playlist Left-Side Section -->
+        <div class="playlist-left-section" id="playlistLeftSection" style="display: none;">
+          <!-- Currently Playing Playlist Status Header -->
+          <div class="playlist-now-playing-status">
+            <div class="equalizer-icon-static" aria-hidden="true">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+            <h2 class="playlist-current-title" id="playlistCurrentTitle">No playlist playing right now</h2>
+          </div>
+
+          <!-- Featured Two Playlists Graphic Structure (Ref. Playlist Interface.png) -->
+          <div class="playlist-featured-container" id="playlistFeaturedContainer">
+            <div class="featured-line-left"></div>
+            
+            <div class="featured-item vertical-item" id="featuredItem1">
+              <div class="featured-card featured-card-vertical" id="featuredCard1" tabindex="0" role="button" title="Open Playlist">
+                <img src="Assets/M logo.png" alt="Featured Playlist" class="featured-card-img" id="featuredImg1" />
+              </div>
+              <span class="featured-card-title title-vertical" id="featuredTitle1">Late Nights</span>
+            </div>
+
+            <div class="featured-connector-wrap">
+              <svg class="featured-connector-svg" viewBox="0 0 100 80" fill="none" preserveAspectRatio="none">
+                <path d="M 0 12 L 40 12 L 75 68 L 100 68" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </div>
+
+            <div class="featured-item landscape-item" id="featuredItem2">
+              <div class="featured-card featured-card-landscape" id="featuredCard2" tabindex="0" role="button" title="Open Playlist">
+                <img src="Assets/M logo.png" alt="Featured Playlist" class="featured-card-img" id="featuredImg2" />
+              </div>
+              <span class="featured-card-title title-landscape" id="featuredTitle2">Teleph..</span>
+            </div>
+
+            <div class="featured-line-right"></div>
+          </div>
+
+          <!-- Fav. Section -->
+          <div class="playlist-fav-section" id="playlistFavSection">
+            <h3 class="playlist-fav-heading">Fav.</h3>
+            <div class="playlist-fav-list" id="playlistFavList">
+              <span class="playlist-fav-empty">No favorite playlist till now</span>
+            </div>
+          </div>
+        </div>
       </div>
     </main>
 
@@ -429,9 +477,56 @@
 
   <!-- Three-Dot Song Context Menu -->
   <div class="context-menu" id="songContextMenu" role="menu">
+    <button class="context-item" data-action="select" role="menuitem">Select</button>
+    <button class="context-item" data-action="add-to-playlist" role="menuitem">Add to Playlist</button>
     <button class="context-item" data-action="play-next" role="menuitem">Play Next</button>
     <button class="context-item" data-action="info" role="menuitem">Track Info</button>
     <button class="context-item delete" data-action="delete" role="menuitem">Remove from Library</button>
+    <button class="context-item remove-from-playlist" id="contextRemoveFromPlaylistBtn" data-action="remove-from-playlist" role="menuitem" style="display: none;">Remove from Playlist</button>
+  </div>
+
+  <!-- Three-Dot Playlist Item Context Menu -->
+  <div class="context-menu" id="playlistContextMenu" role="menu">
+    <button class="context-item" data-action="play-playlist" role="menuitem">Play Playlist</button>
+    <button class="context-item" data-action="rename-playlist" role="menuitem">Rename Playlist</button>
+    <button class="context-item delete" data-action="delete-playlist" role="menuitem">Delete Playlist</button>
+  </div>
+
+  <!-- Add To Playlist Modal Overlay -->
+  <div class="modal-overlay" id="playlistModal" role="dialog" aria-modal="true">
+    <div class="playlist-modal-card">
+      <div class="playlist-modal-header">
+        <h2 class="playlist-modal-title">Add to Playlist</h2>
+        <button class="close-modal-btn" id="closePlaylistModalBtn" aria-label="Close modal">✕</button>
+      </div>
+      
+      <div class="create-playlist-row" id="createPlaylistQuickRow">
+        <button class="create-playlist-btn" id="showCreatePlaylistBtn">+ Create New Playlist</button>
+        <div class="create-playlist-input-box" id="createPlaylistInputBox" style="display: none;">
+          <input type="text" id="newPlaylistNameInput" class="playlist-name-input" placeholder="Playlist Name..." maxlength="40" />
+          <div class="create-playlist-btns-group">
+            <button class="playlist-action-btn confirm-btn" id="confirmCreatePlaylistBtn">Create</button>
+            <button class="playlist-action-btn cancel-btn" id="cancelCreatePlaylistBtn">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="playlist-select-list" id="playlistSelectList">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Multi-Select Floating Action Bar -->
+  <div class="multi-select-bar" id="multiSelectActionBar">
+    <div class="multi-select-info">
+      <span class="multi-select-count" id="multiSelectCount">0</span>
+    </div>
+    <div class="multi-select-actions">
+      <button class="multi-select-btn" id="multiSelectAllBtn">All</button>
+      <button class="multi-select-btn primary-btn" id="multiSelectAddBtn" title="Add to Playlist" aria-label="Add to Playlist">+</button>
+      <button class="multi-select-btn cancel-btn" id="multiSelectCancelBtn" title="Cancel" aria-label="Cancel">✕</button>
+    </div>
   </div>
 
   <!-- Toast Notification Message -->

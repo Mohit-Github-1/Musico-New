@@ -16,6 +16,8 @@ class MusicPlayer {
     this.isShuffle = false;
     this.repeatMode = 'all';
     this.volume = 0.85;
+    this.activePlaylistId = null;
+    this.activePlaylistName = null;
 
     // Web Audio API setup
     this.audioCtx = null;
@@ -547,6 +549,15 @@ class MusicPlayer {
     const mobilePopup = document.getElementById('mobileCompactPopup');
     if (mobilePopup) {
       mobilePopup.classList.toggle('visible', Boolean(this.currentTrack));
+    }
+
+    const playlistCurrentTitle = document.getElementById('playlistCurrentTitle');
+    if (playlistCurrentTitle) {
+      if (this.activePlaylistName) {
+        playlistCurrentTitle.textContent = this.activePlaylistName;
+      } else {
+        playlistCurrentTitle.textContent = 'No playlist playing right now';
+      }
     }
 
     if (window.updateMobileUpNextUI) {
