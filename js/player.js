@@ -44,12 +44,12 @@ class MusicPlayer {
 
   /**
    * Apply effective volume and amplification.
-   * On Mobile: Scale volume up to ~1.2x (120%) gain when slider is at maximum.
+   * On Mobile: Scale volume up to ~1.6x (160%) gain when slider is at maximum.
    * On PC: Standard 1.0x (100%) maximum output.
    */
   updateEffectiveVolume() {
     const isMobile = this.isMobileDevice();
-    const multiplier = isMobile ? 1.2 : 1.0;
+    const multiplier = isMobile ? 1.6 : 1.0;
     const effectiveGain = this.volume * multiplier;
 
     if (this.gainNode && this.audioCtx) {
