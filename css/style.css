@@ -809,6 +809,7 @@ html, body {
 
 .song-card.active {
   position: relative;
+  background-color: #E8E8EC;
 }
 
 .song-card.active::before {
@@ -816,7 +817,7 @@ html, body {
   position: absolute;
   inset: 0;
   border-radius: var(--radius-card);
-  background-color: rgba(0, 0, 0, 0.15);
+  background-color: rgba(0, 0, 0, 0.28);
   pointer-events: none;
   z-index: 1;
   transition: background-color 0.2s ease;
@@ -878,19 +879,7 @@ html, body {
 }
 
 .song-play-overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: opacity 0.15s ease;
-}
-
-.song-card:hover .song-play-overlay,
-.song-card.playing .song-play-overlay {
-  opacity: 1;
+  display: none !important;
 }
 
 .song-info {
@@ -978,6 +967,46 @@ html, body {
   border-radius: 50%;
   width: 28px;
   height: 28px;
+}
+
+/* Alphabetical Scroll Indicator Box (PC / Desktop View) */
+.alphabet-scroll-indicator {
+  position: absolute;
+  right: 28px;
+  bottom: 28px;
+  width: 62px;
+  height: 62px;
+  background-color: #121214;
+  color: #FFFFFF;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.65), 0 0 16px rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-heading);
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+  z-index: 50;
+  pointer-events: none;
+  opacity: 0;
+  transform: scale(0.85);
+  transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+}
+
+.alphabet-scroll-indicator.visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.alphabet-scroll-indicator.scrolling {
+  opacity: 1;
+  transform: scale(1.06);
+  border-color: rgba(255, 255, 255, 0.6);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.8), 0 0 18px rgba(255, 255, 255, 0.18);
 }
 
 /* Empty State (No Songs) */
@@ -1440,7 +1469,8 @@ body.drag-over::after {
   .sidebar,
   .player-section,
   .library-header,
-  .library-equalizer-bars {
+  .library-equalizer-bars,
+  .alphabet-scroll-indicator {
     display: none !important;
   }
 

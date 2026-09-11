@@ -158,11 +158,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         <div class="song-card-left">
           <div class="song-thumb-wrapper">
             <img src="${coverSrc}" alt="${escapeHtml(track.title)}" class="song-thumb ${isFallback ? 'fallback-logo' : ''}" loading="lazy" onerror="this.onerror=null;this.src='assets/M logo for music items.png';this.className='song-thumb fallback-logo';" />
-            <div class="song-play-overlay">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
-                <polygon points="5 3 19 12 5 21 5 3"></polygon>
-              </svg>
-            </div>
           </div>
           <div class="song-info">
             <span class="song-title">${escapeHtml(track.title)}</span>
@@ -262,7 +257,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Update custom mobile scrollbar position
-    requestAnimationFrame(updateMobileScrollbarThumb);
+    requestAnimationFrame(() => {
+      updateMobileScrollbarThumb();
+      if (typeof updateAlphabetScrollIndicator === 'function') {
+        updateAlphabetScrollIndicator(false);
+      }
+    });
   }
 
   // =========================================================================
@@ -1151,6 +1151,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const maxScroll = Math.max(0, songsListContainer.scrollHeight - songsListContainer.clientHeight);
     if (maxScroll > 0) {
       songsListContainer.scrollTop = (percent / 100) * maxScroll;
+      updateAlphabetScrollIndicator();
     }
   }
 
@@ -1223,11 +1224,96 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
+  // Alphabetical Scroll Indicator for PC/Desktop view
+  let alphabetFadeTimeout = null;
+
+  function getVisibleAlphabetLetter() {
+    if (!songsListContainer) return '';
+
+    const containerRect = songsListContainer.getBoundingClientRect();
+    const cards = songsListContainer.querySelectorAll('.song-card');
+
+    for (let i = 0; i < cards.length; i++) {
+      const card = cards[i];
+      const cardRect = card.getBoundingClientRect();
+      // The first card whose bottom is below container top and top is within container
+      if (cardRect.bottom > containerRect.top + 6 && cardRect.top < containerRect.bottom - 6) {
+        const titleEl = card.querySelector('.song-title');
+        let title = titleEl ? titleEl.textContent : '';
+        if (!title) {
+          const id = card.getAttribute('data-id');
+          const t = allTracks.find(x => x.id === id);
+          if (t) title = t.title || '';
+        }
+        if (title) {
+          const clean = title.trim().replace(/^[^a-zA-Z0-9]+/, '');
+          const char = (clean.charAt(0) || title.trim().charAt(0)).toUpperCase();
+          if (char >= 'A' && char <= 'Z') return char;
+          if (char >= '0' && char <= '9') return char;
+          return '#';
+        }
+      }
+    }
+
+    // Fallback: direct index estimation based on scroll position in allTracks
+    if (allTracks && allTracks.length > 0) {
+      const maxScroll = Math.max(1, songsListContainer.scrollHeight - songsListContainer.clientHeight);
+      const ratio = Math.max(0, Math.min(1, songsListContainer.scrollTop / maxScroll));
+      const idx = Math.min(allTracks.length - 1, Math.floor(ratio * allTracks.length));
+      const track = allTracks[idx];
+      if (track && track.title) {
+        const clean = track.title.trim().replace(/^[^a-zA-Z0-9]+/, '');
+        const char = (clean.charAt(0) || track.title.trim().charAt(0)).toUpperCase();
+        if (char >= 'A' && char <= 'Z') return char;
+        if (char >= '0' && char <= '9') return char;
+        return '#';
+      }
+    }
+
+    return '';
+  }
+
+  function updateAlphabetScrollIndicator(isScrolling = true) {
+    const alphabetIndicator = document.getElementById('alphabetScrollIndicator');
+    if (!alphabetIndicator || !songsListContainer || window.innerWidth <= 768) return;
+
+    if (currentView !== 'all_songs' || !allTracks || allTracks.length === 0) {
+      alphabetIndicator.classList.remove('visible', 'scrolling');
+      return;
+    }
+
+    const letter = getVisibleAlphabetLetter();
+    if (letter) {
+      alphabetIndicator.textContent = letter;
+      alphabetIndicator.classList.add('visible');
+      if (isScrolling) {
+        alphabetIndicator.classList.add('scrolling');
+      }
+
+      if (alphabetFadeTimeout) {
+        clearTimeout(alphabetFadeTimeout);
+      }
+      alphabetFadeTimeout = setTimeout(() => {
+        alphabetIndicator.classList.remove('scrolling');
+        alphabetIndicator.classList.remove('visible');
+      }, 1500);
+    }
+  }
+
   if (songsListContainer) {
     songsListContainer.addEventListener('scroll', () => {
       updateSliderThumbFromSongListScroll();
       updateMobileScrollbarThumb();
+      updateAlphabetScrollIndicator(true);
     }, { passive: true });
+
+    songsListContainer.addEventListener('wheel', () => {
+      updateAlphabetScrollIndicator(true);
+    }, { passive: true });
+
+    songsListContainer.addEventListener('mouseenter', () => {
+      updateAlphabetScrollIndicator(false);
+    });
   }
 
   window.addEventListener('resize', () => {
