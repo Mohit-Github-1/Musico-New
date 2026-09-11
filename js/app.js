@@ -359,6 +359,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     activePlaylistId = null;
     playlists = await fileManager.getPlaylists();
 
+    // Synchronize navbar active states
+    document.querySelectorAll('.menu-item-btn').forEach(b => b.classList.toggle('active', b.dataset.action === 'playlists'));
+    document.querySelectorAll('.mobile-nav-btn').forEach(b => b.classList.toggle('active', b.dataset.action === 'playlists'));
+
     // Update Header
     const libraryHeading = document.querySelector('.library-heading');
     if (libraryHeading) libraryHeading.textContent = 'Playlist';
@@ -691,6 +695,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     isGridView = false;
     currentView = 'all_songs';
     activePlaylistId = null;
+
+    // Synchronize navbar active states
+    document.querySelectorAll('.menu-item-btn').forEach(b => b.classList.toggle('active', b.dataset.action === 'all-songs'));
+    document.querySelectorAll('.mobile-nav-btn').forEach(b => b.classList.toggle('active', b.dataset.action === 'all-songs'));
 
     // Reset Library Heading
     const libraryHeading = document.querySelector('.library-heading');
@@ -1035,12 +1043,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.querySelectorAll('.mobile-bottom-nav').forEach(nav => {
     nav.querySelectorAll('.mobile-nav-btn').forEach(btn => {
       btn.addEventListener('click', () => {
-        document.querySelectorAll('.mobile-nav-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
         const action = btn.dataset.action;
 
-        // If inside full player and tapped home or library, close full player
-        if (mobileFullPlayer && (action === 'home' || action === 'all-songs' || action === 'playlists' || action === 'albums')) {
+        // If inside full player and tapped all-songs or playlists, close full player
+        if (mobileFullPlayer && (action === 'all-songs' || action === 'playlists')) {
           mobileFullPlayer.classList.remove('open');
         }
 
@@ -1054,16 +1060,14 @@ document.addEventListener('DOMContentLoaded', async () => {
           } else if (allTracks.length === 0) {
             showToast('Library is already empty.');
           }
-        } else if (action === 'home' || action === 'all-songs') {
+        } else if (action === 'all-songs') {
           setAllFilter();
           showToast('All Songs');
         } else if (action === 'playlists') {
           renderPlaylistsView();
           showToast('Playlists');
-        } else if (action === 'albums') {
-          toggleColumnFilter();
-          showToast('Album View');
         }
+        // 'explore' and 'home' remain non-functional for now
       });
     });
   });
@@ -1102,8 +1106,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Left Sidebar Menu Items navigation
   document.querySelectorAll('.menu-item-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.menu-item-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
       const action = btn.dataset.action;
       if (action === 'delete') {
         if (allTracks.length > 0 && confirm('Clear all songs from library?')) {
@@ -1119,13 +1121,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         const label = document.getElementById('viewSelectorLabel');
         if (label) label.textContent = 'Playlists';
         renderPlaylistsView();
-      } else if (action === 'home' || action === 'all-songs') {
+      } else if (action === 'all-songs') {
         const label = document.getElementById('viewSelectorLabel');
         if (label) label.textContent = 'Home / All Songs';
         setAllFilter();
-      } else if (action === 'albums') {
-        toggleColumnFilter();
       }
+      // 'explore' and 'home' remain non-functional for now
     });
   });
 

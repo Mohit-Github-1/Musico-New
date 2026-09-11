@@ -1,8 +1,8 @@
 /**
- * Musico - PWA Offline Service Worker (v23)
+ * Musico - PWA Offline Service Worker (v24)
  */
 
-const CACHE_NAME = 'musico-cache-v23';
+const CACHE_NAME = 'musico-cache-v24';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -12,6 +12,11 @@ const STATIC_ASSETS = [
   './js/player.js',
   './js/fileManager.js',
   './js/id3Parser.js',
+  './assets/new%20navbar%20icons/bin%20new.svg',
+  './assets/new%20navbar%20icons/explore%20all.svg',
+  './assets/new%20navbar%20icons/home%20new.svg',
+  './assets/new%20navbar%20icons/all%20songs%20new.svg',
+  './assets/new%20navbar%20icons/playlist%20new.svg',
   './assets/ADD%20button%20with%20no%20BG.png',
   './assets/M%20logo.png',
   './assets/app%20icon%20main.png',
@@ -20,11 +25,6 @@ const STATIC_ASSETS = [
   './assets/Mlogowithbg.png',
   './assets/M%20logo%20for%20music%20items.png',
   './assets/Addbtn.png',
-  './assets/HomeMenuItem.png',
-  './assets/PlaylistMenuItem.png',
-  './assets/AlbumMenuItem.png',
-  './assets/AllSongsMenuItem.png',
-  './assets/DeleteMenuItem.png',
   './assets/Search.png',
   './assets/Settings.png',
   './assets/ProfilePic.png',
