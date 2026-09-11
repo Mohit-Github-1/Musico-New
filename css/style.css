@@ -195,9 +195,9 @@ html, body {
    2. MIDDLE PLAYER SECTION (Dual Background: Off-white Header + Pure White Body)
    ========================================================================== */
 .player-section {
-  flex: 1.05;
+  flex: 0.95;
   min-width: 360px;
-  max-width: 580px;
+  max-width: 450px;
   height: 100%;
   background-color: var(--bg-player-body);
   display: flex;
@@ -313,7 +313,7 @@ html, body {
 /* Pure White Lower Player Body */
 .player-body {
   flex: 1;
-  padding: 22px 32px 24px 34px;
+  padding: 22px 58px 24px 58px;
   display: flex;
   flex-direction: column;
   overflow-y: auto;
@@ -321,15 +321,17 @@ html, body {
   background-color: var(--bg-player-body);
 }
 
-/* Top Pill Slider Row (Left edge aligned with 'All' button) */
+/* Top Pill Slider Row (Centered horizontal bar with gap on left/right edges) */
 .top-slider-row {
-  margin-bottom: 12px;
+  margin-bottom: 14px;
   display: flex;
   align-items: center;
+  justify-content: center;
+  width: 100%;
 }
 
 .top-slider-pill {
-  width: 204px;
+  width: calc(100% - 24px);
   height: 18px;
   background-color: var(--track-bg);
   border-radius: var(--radius-pill);
@@ -338,7 +340,7 @@ html, body {
   display: flex;
   align-items: center;
   padding: 2px;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.2s ease, background-color 0.2s ease;
 }
 
 .top-slider-pill:hover {
@@ -349,26 +351,28 @@ html, body {
   position: absolute;
   left: 2px;
   top: 2px;
-  width: 26px;
+  width: 34px;
   height: 14px;
   background-color: #000000;
   border-radius: var(--radius-pill);
   pointer-events: none;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
   transition: left 0.08s linear;
 }
 
-/* Filter Pills: All, Column, Shuffle (Compact, perfectly centered text) */
+/* Filter Pills: All, Column, Shuffle (Proportionally spanning across the cover width) */
 .filter-pills-row {
-  margin-bottom: 20px;
+  margin-bottom: 18px;
   display: flex;
   align-items: center;
+  width: 100%;
 }
 
 .filter-pills-group {
   display: flex;
   align-items: center;
-  gap: 8px;
+  width: 100%;
+  gap: 10px;
 }
 
 .filter-pill-btn {
@@ -376,12 +380,12 @@ html, body {
   color: #FFFFFF;
   border: none;
   border-radius: var(--radius-pill);
-  height: 26px;
+  height: 38px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   font-family: var(--font-heading);
-  font-size: 12.5px;
+  font-size: 13.5px;
   font-weight: 600;
   line-height: 1;
   text-align: center;
@@ -389,22 +393,22 @@ html, body {
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
   user-select: none;
-  padding: 0 12px;
+  padding: 0 8px;
 }
 
 .filter-pill-btn#filterAllBtn {
-  min-width: 40px;
-  padding: 0 11px;
+  flex: 0.85;
+  min-width: 0;
 }
 
 .filter-pill-btn#filterColumnBtn {
-  min-width: 66px;
-  padding: 0 12px;
+  flex: 1.25;
+  min-width: 0;
 }
 
 .filter-pill-btn#filterShuffleBtn {
-  min-width: 68px;
-  padding: 0 12px;
+  flex: 1.85;
+  min-width: 0;
 }
 
 .filter-pill-btn:hover {
@@ -440,6 +444,7 @@ html, body {
   width: 3.5px;
   background-color: #000000;
   border-radius: 2px;
+  transition: height 0.05s ease-out;
 }
 
 .equalizer-icon-static span:nth-child(1) { height: 16px; }
@@ -1380,6 +1385,7 @@ body.drag-over::after {
   }
   .player-section {
     min-width: 320px;
+    max-width: 400px;
   }
   .player-header {
     height: 84px;
@@ -1396,7 +1402,7 @@ body.drag-over::after {
     margin-bottom: -12px;
   }
   .player-body {
-    padding: 18px 22px;
+    padding: 18px 44px;
   }
   .library-section {
     min-width: 340px;

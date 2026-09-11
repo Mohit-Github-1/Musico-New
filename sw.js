@@ -1,8 +1,8 @@
 /**
- * Musico - PWA Offline Service Worker (v18)
+ * Musico - PWA Offline Service Worker (v20)
  */
 
-const CACHE_NAME = 'musico-cache-v18';
+const CACHE_NAME = 'musico-cache-v20';
 const STATIC_ASSETS = [
   './',
   './index.html',

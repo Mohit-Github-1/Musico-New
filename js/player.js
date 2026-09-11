@@ -104,6 +104,9 @@ class MusicPlayer {
   setupAudioListeners() {
     this.audio.addEventListener('play', () => {
       this.isPlaying = true;
+      if (!this.isAudioCtxInitialized) {
+        this.initWebAudio();
+      }
       if (this.audioCtx && this.audioCtx.state === 'suspended') {
         this.audioCtx.resume();
       }
@@ -615,10 +618,14 @@ class MusicPlayer {
       document.getElementById('eqBar4')
     ];
 
+    const npSpans = document.querySelectorAll('.artist-now-playing .equalizer-icon-static span');
+
     const dataArray = new Uint8Array(32);
 
     const renderVisualizer = () => {
       requestAnimationFrame(renderVisualizer);
+
+      const targetSpans = npSpans.length === 3 ? npSpans : document.querySelectorAll('.artist-now-playing .equalizer-icon-static span');
 
       if (this.analyser && this.isPlaying) {
         this.analyser.getByteFrequencyData(dataArray);
@@ -638,10 +645,27 @@ class MusicPlayer {
         bars.forEach((bar, idx) => {
           if (bar) bar.style.height = `${heights[idx]}px`;
         });
+
+        // Dynamic 3-line real-time music indicator animation
+        if (targetSpans && targetSpans.length >= 3) {
+          const npH1 = Math.max(4, Math.min(18, Math.round(4 + v1 * 14)));
+          const npH2 = Math.max(4, Math.min(18, Math.round(3 + v2 * 14)));
+          const npH3 = Math.max(4, Math.min(18, Math.round(4 + v3 * 14)));
+          targetSpans[0].style.height = `${npH1}px`;
+          targetSpans[1].style.height = `${npH2}px`;
+          targetSpans[2].style.height = `${npH3}px`;
+        }
       } else {
         bars.forEach((bar) => {
           if (bar) bar.style.height = '14px';
         });
+
+        // Reset to original static indicator heights when paused / stopped
+        if (targetSpans && targetSpans.length >= 3) {
+          targetSpans[0].style.height = '16px';
+          targetSpans[1].style.height = '11px';
+          targetSpans[2].style.height = '18px';
+        }
       }
     };
 

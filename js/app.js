@@ -1141,7 +1141,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // Update thumb position on the horizontal bar
     if (topSliderThumb) {
-      const maxLeft = Math.max(0, rect.width - 30);
+      const thumbWidth = topSliderThumb.offsetWidth || 32;
+      const maxLeft = Math.max(0, rect.width - thumbWidth - 4);
       const leftPx = (percent / 100) * maxLeft + 2;
       topSliderThumb.style.left = `${leftPx}px`;
     }
@@ -1157,8 +1158,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (isDraggingSlider || !topSliderTrack || !topSliderThumb || !songsListContainer) return;
     const maxScroll = songsListContainer.scrollHeight - songsListContainer.clientHeight;
     const scrollPercent = maxScroll > 0 ? Math.min(100, Math.max(0, (songsListContainer.scrollTop / maxScroll) * 100)) : 0;
-    const trackWidth = topSliderTrack.clientWidth || 204;
-    const maxLeft = Math.max(0, trackWidth - 30);
+    const trackWidth = topSliderTrack.clientWidth || 300;
+    const thumbWidth = topSliderThumb.offsetWidth || 32;
+    const maxLeft = Math.max(0, trackWidth - thumbWidth - 4);
     const leftPx = (scrollPercent / 100) * maxLeft + 2;
     topSliderThumb.style.left = `${leftPx}px`;
   }
