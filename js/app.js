@@ -751,6 +751,27 @@ document.addEventListener('DOMContentLoaded', async () => {
       } catch (e) {}
     }
 
+    // Close mobile full player and up-next panel if open
+    const mobileFullPlayer = document.getElementById('mobileFullPlayer');
+    if (mobileFullPlayer) mobileFullPlayer.classList.remove('open');
+    const mobileUpNextPanel = document.getElementById('mobileUpNextPanel');
+    if (mobileUpNextPanel) mobileUpNextPanel.classList.remove('open');
+
+    // Close any open modals/overlays
+    const playlistModal = document.getElementById('playlistModal');
+    if (playlistModal) playlistModal.classList.remove('open');
+    const settingsModal = document.getElementById('settingsModal');
+    if (settingsModal) settingsModal.classList.remove('open');
+    const songContextMenu = document.getElementById('songContextMenu');
+    if (songContextMenu) songContextMenu.classList.remove('open');
+    const playlistContextMenu = document.getElementById('playlistContextMenu');
+    if (playlistContextMenu) playlistContextMenu.classList.remove('open');
+
+    // Exit selection mode if active
+    if (isSelectMode && typeof exitSelectMode === 'function') {
+      exitSelectMode();
+    }
+
     // Synchronize navbar active states
     document.querySelectorAll('.menu-item-btn').forEach(b => b.classList.toggle('active', b.dataset.action === 'all-songs'));
     document.querySelectorAll('.mobile-nav-btn').forEach(b => b.classList.toggle('active', b.dataset.action === 'all-songs'));
@@ -763,6 +784,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const playerBody = document.querySelector('.player-body');
     if (playerBody) playerBody.classList.remove('playlist-view-active');
 
+    // Reset view selector label if present
+    const label = document.getElementById('viewSelectorLabel');
+    if (label) label.textContent = 'Home / All Songs';
+
+    // Active state for All buttons, Column buttons remain inactive
     ['filterAllBtn', 'mobileFilterAllBtn', 'mobileFullFilterAllBtn'].forEach(id => {
       const b = document.getElementById(id);
       if (b) b.classList.add('active');
@@ -774,36 +800,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderSongList();
   }
 
-  function toggleColumnFilter() {
-    isGridView = !isGridView;
-    ['filterColumnBtn', 'mobileFilterColumnBtn', 'mobileFullFilterColumnBtn'].forEach(id => {
-      const b = document.getElementById(id);
-      if (b) b.classList.toggle('active', isGridView);
-    });
-    ['filterAllBtn', 'mobileFilterAllBtn', 'mobileFullFilterAllBtn'].forEach(id => {
-      const b = document.getElementById(id);
-      if (b) {
-        if (!isGridView) b.classList.add('active');
-        else b.classList.remove('active');
-      }
-    });
-    renderSongList();
-  }
-
   function toggleShuffleFilter() {
     const isShuffled = player.toggleShuffle();
     showToast(isShuffled ? 'Shuffle: ON' : 'Shuffle: OFF');
     if (window.updateMobileUpNextUI) window.updateMobileUpNextUI();
   }
 
+  // Global "All" navigation buttons
   ['filterAllBtn', 'mobileFilterAllBtn', 'mobileFullFilterAllBtn'].forEach(id => {
     const b = document.getElementById(id);
     if (b) b.addEventListener('click', setAllFilter);
   });
 
+  // "Column" buttons: non-functional for now (visually unchanged)
   ['filterColumnBtn', 'mobileFilterColumnBtn', 'mobileFullFilterColumnBtn'].forEach(id => {
     const b = document.getElementById(id);
-    if (b) b.addEventListener('click', toggleColumnFilter);
+    if (b) {
+      b.addEventListener('click', (e) => {
+        e.preventDefault();
+        // Column button functionality disabled for now
+      });
+    }
   });
 
   ['filterShuffleBtn', 'mobileFilterShuffleBtn', 'mobileFullFilterShuffleBtn'].forEach(id => {
@@ -1148,8 +1165,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (view === 'playlists') {
           renderPlaylistsView();
-        } else if (view === 'albums') {
-          toggleColumnFilter();
         } else {
           setAllFilter();
         }

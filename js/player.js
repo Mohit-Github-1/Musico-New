@@ -608,18 +608,10 @@ class MusicPlayer {
   }
 
   /**
-   * Real-time equalizer visualizer animation loop
+   * Real-time equalizer visualizer animation loop (Now Playing wave indicator)
    */
   startVisualizerLoop() {
-    const bars = [
-      document.getElementById('eqBar1'),
-      document.getElementById('eqBar2'),
-      document.getElementById('eqBar3'),
-      document.getElementById('eqBar4')
-    ];
-
     const npSpans = document.querySelectorAll('.artist-now-playing .equalizer-icon-static span');
-
     const dataArray = new Uint8Array(32);
 
     const renderVisualizer = () => {
@@ -633,18 +625,6 @@ class MusicPlayer {
         const v1 = (dataArray[2] / 255);
         const v2 = (dataArray[6] / 255);
         const v3 = (dataArray[12] / 255);
-        const v4 = (dataArray[20] / 255);
-
-        const heights = [
-          Math.max(6, v1 * 26),
-          Math.max(6, v2 * 26),
-          Math.max(6, v3 * 26),
-          Math.max(6, v4 * 26)
-        ];
-
-        bars.forEach((bar, idx) => {
-          if (bar) bar.style.height = `${heights[idx]}px`;
-        });
 
         // Dynamic 3-line real-time music indicator animation
         if (targetSpans && targetSpans.length >= 3) {
@@ -656,10 +636,6 @@ class MusicPlayer {
           targetSpans[2].style.height = `${npH3}px`;
         }
       } else {
-        bars.forEach((bar) => {
-          if (bar) bar.style.height = '14px';
-        });
-
         // Reset to original static indicator heights when paused / stopped
         if (targetSpans && targetSpans.length >= 3) {
           targetSpans[0].style.height = '16px';

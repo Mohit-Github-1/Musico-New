@@ -12,7 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Contrail+One&family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
   
   <!-- App Stylesheet -->
-  <link rel="stylesheet" href="css/style.css?v=26" />
+  <link rel="stylesheet" href="css/style.css?v=34" />
 
   <!-- PWA Web App Manifest & Meta -->
   <link rel="manifest" href="manifest.json" />
@@ -174,8 +174,8 @@
             </div>
 
             <div class="featured-connector-wrap">
-              <svg class="featured-connector-svg" viewBox="0 0 100 80" fill="none" preserveAspectRatio="none">
-                <path d="M 0 12 L 40 12 L 75 68 L 100 68" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+              <svg class="featured-connector-svg" viewBox="0 0 60 60" fill="none" preserveAspectRatio="none">
+                <path d="M 0 8 L 15 8 L 45 52 L 60 52" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
               </svg>
             </div>
 
@@ -246,12 +246,12 @@
         </div>
       </header>
 
-      <!-- 4 Equalizer Visualizer Bars -->
-      <div class="library-equalizer-bars" aria-hidden="true">
-        <span class="eq-bar" id="eqBar1"></span>
-        <span class="eq-bar" id="eqBar2"></span>
-        <span class="eq-bar" id="eqBar3"></span>
-        <span class="eq-bar" id="eqBar4"></span>
+      <!-- 4 Visual Buttons under Songs heading (PC / Desktop View) -->
+      <div class="library-equalizer-bars" role="group" aria-label="View Options">
+        <button class="eq-bar active" id="eqBar1" type="button" aria-label="Option 1"></button>
+        <button class="eq-bar" id="eqBar2" type="button" aria-label="Option 2"></button>
+        <button class="eq-bar" id="eqBar3" type="button" aria-label="Option 3"></button>
+        <button class="eq-bar" id="eqBar4" type="button" aria-label="Option 4"></button>
       </div>
 
       <!-- Scrollable Songs List -->
@@ -535,9 +535,9 @@
   <!-- Toast Notification Message -->
   <div class="toast-message" id="toastMessage" role="status" aria-live="polite"></div>
 
-  <script src="js/id3Parser.js?v=26"></script>
-  <script src="js/fileManager.js?v=26"></script>
-  <script src="js/player.js?v=26"></script>
-  <script src="js/app.js?v=26"></script>
+  <script src="js/id3Parser.js?v=34"></script>
+  <script src="js/fileManager.js?v=34"></script>
+  <script src="js/player.js?v=34"></script>
+  <script src="js/app.js?v=34"></script>
 </body>
 </html>
