@@ -55,6 +55,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // DOM Elements
   const songsListContainer = document.getElementById('songsListContainer');
+  const pcLyricsContainer = document.getElementById('pcLyricsContainer');
+  let currentPcMode = 1; // 1: All Songs, 2: Lyrics, 3: Column/Grid, 4: Up Next/Queue
   const addFolderBtn = document.getElementById('addFolderBtn');
   const searchBtn = document.getElementById('searchBtn');
   const searchOverlay = document.getElementById('searchOverlay');
@@ -222,6 +224,32 @@ document.addEventListener('DOMContentLoaded', async () => {
   function renderSongList() {
     if (!songsListContainer) return;
 
+    if (window.innerWidth > 900) {
+      if (currentPcMode === 2) {
+        if (pcLyricsContainer) pcLyricsContainer.style.display = 'flex';
+        songsListContainer.style.display = 'none';
+        songsListContainer.className = 'songs-list';
+        renderPcLyricsView();
+        return;
+      }
+      if (currentPcMode === 3) {
+        if (pcLyricsContainer) pcLyricsContainer.style.display = 'none';
+        songsListContainer.style.display = 'flex';
+        renderPcMasonryGridView();
+        return;
+      }
+      if (currentPcMode === 4) {
+        if (pcLyricsContainer) pcLyricsContainer.style.display = 'none';
+        songsListContainer.className = 'songs-list';
+        songsListContainer.style.display = 'flex';
+        renderPcQueueView();
+        return;
+      }
+    }
+
+    if (pcLyricsContainer) pcLyricsContainer.style.display = 'none';
+    songsListContainer.style.display = 'flex';
+
     let filtered = allTracks;
 
     // Apply search filter if query is present
@@ -296,6 +324,239 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // =========================================================================
+  // PC 4-MODE VIEW CONTROLLER & RENDERERS (DESKTOP VIEW ONLY)
+  // =========================================================================
+
+  // Mode 2: PC Lyrics View
+  function renderPcLyricsView() {
+    if (!pcLyricsContainer) return;
+
+    if (!player.currentTrack) {
+      pcLyricsContainer.innerHTML = `
+        <div class="lyrics-offline-fallback">
+          <div class="lyrics-offline-title">No Song Playing</div>
+          <div class="lyrics-offline-artist">//Select a song to view lyrics</div>
+        </div>
+      `;
+      return;
+    }
+
+    const track = player.currentTrack;
+    const lyricsText = track.lyrics ? track.lyrics.trim() : '';
+
+    if (!lyricsText) {
+      pcLyricsContainer.innerHTML = `
+        <div class="lyrics-offline-fallback">
+          <div class="lyrics-offline-title">${escapeHtml(track.title)}</div>
+          <div class="lyrics-offline-artist">//${escapeHtml(track.artist || 'Unknown Artist')}</div>
+          <div class="lyrics-offline-badge">Offline Lyrics Not Available</div>
+          <p class="lyrics-offline-sub">Embedded lyrics (USLT/ID3, FLAC, M4A) will automatically be displayed here when found in your local audio files.</p>
+        </div>
+      `;
+      return;
+    }
+
+    // Split lyrics by line and format
+    const lines = lyricsText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+    if (lines.length === 0) {
+      pcLyricsContainer.innerHTML = `
+        <div class="lyrics-offline-fallback">
+          <div class="lyrics-offline-title">${escapeHtml(track.title)}</div>
+          <div class="lyrics-offline-artist">//${escapeHtml(track.artist || 'Unknown Artist')}</div>
+          <div class="lyrics-offline-badge">Offline Lyrics Not Available</div>
+        </div>
+      `;
+      return;
+    }
+
+    const midIdx = Math.floor(lines.length / 2);
+    const linesHTML = lines.map((line, idx) => {
+      const isMid = idx === midIdx;
+      return `<div class="lyrics-line ${isMid ? 'highlight' : ''}">${escapeHtml(line)}</div>`;
+    }).join('');
+
+    pcLyricsContainer.innerHTML = `
+      <div class="pc-lyrics-scroll-area">
+        ${linesHTML}
+      </div>
+    `;
+  }
+
+  // Mode 3: PC 3-Column Masonry Grid View
+  function renderPcMasonryGridView() {
+    if (!songsListContainer) return;
+    songsListContainer.className = 'songs-list pc-masonry-grid';
+
+    let filtered = allTracks;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter(t => 
+        t.title.toLowerCase().includes(q) || 
+        (t.artist && t.artist.toLowerCase().includes(q)) ||
+        (t.album && t.album.toLowerCase().includes(q))
+      );
+    }
+
+    if (filtered.length === 0) {
+      songsListContainer.className = 'songs-list empty-container';
+      songsListContainer.innerHTML = `
+        <div class="empty-state">
+          <h3 class="empty-title">No Songs</h3>
+          <p class="empty-subtitle">Click <strong>+</strong> to select a music folder.</p>
+        </div>
+      `;
+      return;
+    }
+
+    // Varied aspect ratio heights matching reference design (~2.5 cards visible per column)
+    const aspectRatios = [
+      '3 / 4',    // Track 0 (Col 1, Row 1): Portrait (~1.33x)
+      '4 / 5',    // Track 1 (Col 2, Row 1): Medium-tall portrait (~1.25x)
+      '16 / 10',  // Track 2 (Col 3, Row 1): Short landscape (~0.62x)
+      '16 / 11',  // Track 3 (Col 1, Row 2): Short landscape (~0.69x)
+      '1 / 1',    // Track 4 (Col 2, Row 2): Square (1.0x)
+      '3 / 4.2',  // Track 5 (Col 3, Row 2): Tall portrait (~1.4x)
+      '16 / 10',  // Track 6 (Col 1, Row 3): Short landscape (~0.62x)
+      '4 / 5',    // Track 7 (Col 2, Row 3): Medium-tall portrait (~1.25x)
+      '4 / 3.2',  // Track 8 (Col 3, Row 3): Medium landscape (~0.8x)
+      '4 / 5',    // Track 9 (Col 1, Row 4): Medium-tall portrait (~1.25x)
+      '16 / 11',  // Track 10 (Col 2, Row 4): Short landscape (~0.69x)
+      '1 / 1'     // Track 11 (Col 3, Row 4): Square (1.0x)
+    ];
+
+    const columns = [[], [], []];
+
+    filtered.forEach((track, idx) => {
+      const isCurrent = player.currentTrack && player.currentTrack.id === track.id;
+      const isFallback = !track.coverUrl || 
+                         track.coverUrl.includes('M logo for music items') ||
+                         track.coverUrl.includes('MlogoforMusicItems') ||
+                         track.coverUrl.includes('Mlogo.png') || 
+                         track.coverUrl.includes('Group 4') || 
+                         track.coverUrl.trim() === '';
+      const coverSrc = isFallback ? 'assets/M logo for music items.png' : track.coverUrl;
+      const ratio = aspectRatios[idx % aspectRatios.length];
+
+      const cardHTML = `
+        <div class="masonry-card ${isCurrent ? 'is-current' : ''}" data-id="${track.id}" data-index="${idx}">
+          <div class="masonry-cover-wrapper" style="aspect-ratio: ${ratio};">
+            <img src="${coverSrc}" alt="${escapeHtml(track.title)}" class="masonry-cover-img" loading="lazy" onerror="this.onerror=null;this.src='assets/M logo for music items.png';" />
+            <div class="masonry-playing-overlay">
+              <div class="masonry-play-indicator">
+                <svg width="42" height="42" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M7.05 8.28c0-1.78 1.93-2.9 3.47-2.01l7.85 4.53c1.54.89 1.54 3.13 0 4.02l-7.85 4.53c-1.54.89-3.47-.23-3.47-2.01V8.28z"/>
+                </svg>
+              </div>
+            </div>
+            <div class="masonry-bottom-pill">
+              <span class="masonry-song-title">${escapeHtml(track.title)}</span>
+              <button class="masonry-options-btn" data-id="${track.id}" title="Options" aria-label="Options">
+                <img src="${currentTheme === 'dark' ? 'assets/Dark Mode/DarkModeOptionsbtn.svg' : 'assets/OptionsThreeDots.svg'}" alt="Options" />
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+
+      columns[idx % 3].push(cardHTML);
+    });
+
+    songsListContainer.innerHTML = columns.map(colCards => `
+      <div class="pc-masonry-col">
+        ${colCards.join('')}
+      </div>
+    `).join('');
+  }
+
+  // Mode 4: PC Up Next / Queue View
+  function renderPcQueueView() {
+    if (!songsListContainer) return;
+    songsListContainer.className = 'songs-list';
+
+    const upcoming = getUpcomingTracks();
+
+    let contentHTML = `<div class="pc-queue-subheader">Up Next</div>`;
+
+    if (upcoming.length === 0) {
+      contentHTML += `<div class="pc-queue-empty">No upcoming songs in queue</div>`;
+    } else {
+      contentHTML += upcoming.map((track, idx) => generateSongCardHTML(track, idx)).join('');
+    }
+
+    songsListContainer.innerHTML = contentHTML;
+  }
+
+  // Switch between 4 PC modes
+  function switchPcMode(modeNum) {
+    if (window.innerWidth <= 900) return; // Desktop PC view only
+
+    // Circular loop (1 <-> 2 <-> 3 <-> 4)
+    if (modeNum < 1) modeNum = 4;
+    if (modeNum > 4) modeNum = 1;
+
+    currentPcMode = modeNum;
+
+    // Reset playlist view if active when switching PC modes
+    const playerBody = document.querySelector('.player-body');
+    if (playerBody) playerBody.classList.remove('playlist-view-active');
+    currentView = 'all_songs';
+    activePlaylistId = null;
+    document.querySelectorAll('.menu-item-btn').forEach(b => b.classList.toggle('active', b.dataset.action === 'all-songs'));
+    const label = document.getElementById('viewSelectorLabel');
+    if (label) label.textContent = 'Home / All Songs';
+
+    // 1. Update 4 vertical bars active states
+    for (let i = 1; i <= 4; i++) {
+      const bar = document.getElementById(`eqBar${i}`);
+      if (bar) {
+        bar.classList.toggle('active', i === modeNum);
+      }
+    }
+
+    // 2. Update library header title (Lyrics when mode 2, Songs for others)
+    const libraryHeading = document.querySelector('.library-heading');
+    if (libraryHeading) {
+      if (modeNum === 2) {
+        libraryHeading.textContent = 'Lyrics';
+      } else {
+        libraryHeading.textContent = 'Songs';
+      }
+    }
+
+    // 3. Switch visible views
+    if (modeNum === 1) {
+      if (pcLyricsContainer) pcLyricsContainer.style.display = 'none';
+      if (songsListContainer) {
+        songsListContainer.className = 'songs-list';
+        songsListContainer.style.display = 'flex';
+      }
+      renderSongList();
+    } else if (modeNum === 2) {
+      if (songsListContainer) {
+        songsListContainer.style.display = 'none';
+        songsListContainer.className = 'songs-list';
+      }
+      if (pcLyricsContainer) {
+        pcLyricsContainer.style.display = 'flex';
+        renderPcLyricsView();
+      }
+    } else if (modeNum === 3) {
+      if (pcLyricsContainer) pcLyricsContainer.style.display = 'none';
+      if (songsListContainer) {
+        songsListContainer.style.display = 'flex';
+        renderPcMasonryGridView();
+      }
+    } else if (modeNum === 4) {
+      if (pcLyricsContainer) pcLyricsContainer.style.display = 'none';
+      if (songsListContainer) {
+        songsListContainer.className = 'songs-list';
+        songsListContainer.style.display = 'flex';
+        renderPcQueueView();
+      }
+    }
+  }
+
+  // =========================================================================
   // PLAYLIST SYSTEM VIEW CONTROLLER (PC & MOBILE)
   // =========================================================================
 
@@ -323,7 +584,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (player.activePlaylistName) {
         playlistCurrentTitle.textContent = player.activePlaylistName;
       } else {
-        playlistCurrentTitle.textContent = 'No playlist playing right now';
+        playlistCurrentTitle.textContent = 'Playlists';
       }
     }
 
@@ -571,11 +832,51 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
       }
 
-      // 5. Song Card Click (Playback)
+      // 5. Masonry Grid 3-dot options (Mode 3)
+      const masonryOptionsBtn = e.target.closest('.masonry-options-btn');
+      if (masonryOptionsBtn) {
+        e.stopPropagation();
+        const trackId = masonryOptionsBtn.dataset.id;
+        showContextMenu(e, trackId);
+        return;
+      }
+
+      // 6. Masonry Grid Card Click (Mode 3 Playback)
+      const masonryCard = e.target.closest('.masonry-card');
+      if (masonryCard) {
+        const trackId = masonryCard.dataset.id;
+        const targetTrackIndex = allTracks.findIndex(t => t.id === trackId);
+        if (targetTrackIndex !== -1) {
+          if (player.currentTrack && player.currentTrack.id === trackId) {
+            player.togglePlay();
+          } else {
+            player.activePlaylistId = null;
+            player.activePlaylistName = null;
+            player.setQueue(allTracks, targetTrackIndex, true);
+            player.updateNowPlayingUI();
+          }
+        }
+        return;
+      }
+
+      // 7. Song Card Click (Playback)
       const card = e.target.closest('.song-card');
       if (card) {
         const trackId = card.dataset.id;
         const isInsidePlaylist = card.dataset.playlistSong === 'true';
+
+        // PC Mode 4: Play from upcoming queue
+        if (window.innerWidth > 900 && currentPcMode === 4) {
+          const queueIndex = player.queue.findIndex(t => t.id === trackId);
+          if (queueIndex !== -1) {
+            if (player.currentTrack && player.currentTrack.id === trackId) {
+              player.togglePlay();
+            } else {
+              player.loadAndPlay(queueIndex);
+            }
+          }
+          return;
+        }
 
         if (isInsidePlaylist && activePlaylistId) {
           const playlist = playlists.find(p => p.id === activePlaylistId);
@@ -797,6 +1098,23 @@ document.addEventListener('DOMContentLoaded', async () => {
       const b = document.getElementById(id);
       if (b) b.classList.remove('active');
     });
+
+    // PC Desktop View: Always reset to Mode 1 (List View) with 1st vertical bar active
+    if (window.innerWidth > 900) {
+      currentPcMode = 1;
+      for (let i = 1; i <= 4; i++) {
+        const bar = document.getElementById(`eqBar${i}`);
+        if (bar) {
+          bar.classList.toggle('active', i === 1);
+        }
+      }
+      if (pcLyricsContainer) pcLyricsContainer.style.display = 'none';
+      if (songsListContainer) {
+        songsListContainer.className = 'songs-list';
+        songsListContainer.style.display = 'flex';
+      }
+    }
+
     renderSongList();
   }
 
@@ -823,10 +1141,96 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  ['filterShuffleBtn', 'mobileFilterShuffleBtn', 'mobileFullFilterShuffleBtn'].forEach(id => {
+  // PC 3-Mode Playback Control: Single-click direct cycling (Repeat One -> Shuffle ON -> Play in Line)
+  const pcShuffleBtn = document.getElementById('filterShuffleBtn');
+  if (pcShuffleBtn) {
+    pcShuffleBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (window.innerWidth <= 900) {
+        toggleShuffleFilter();
+        return;
+      }
+      const newMode = player.cyclePlaybackMode();
+      if (newMode === 'repeat_one') {
+        showToast('Playback: Repeat One');
+      } else if (newMode === 'shuffle') {
+        showToast('Playback: Shuffle ON');
+      } else if (newMode === 'normal') {
+        showToast('Playback: Play in Line');
+      }
+    });
+  }
+
+  // Mobile shuffle buttons keep existing mobile toggle
+  ['mobileFilterShuffleBtn', 'mobileFullFilterShuffleBtn'].forEach(id => {
     const b = document.getElementById(id);
     if (b) b.addEventListener('click', toggleShuffleFilter);
   });
+
+  // =========================================================================
+  // PC 4-MODE INTERACTION & KEYBOARD SHORTCUTS (DESKTOP VIEW ONLY)
+  // =========================================================================
+
+  // 1. PC 4-Mode Vertical Buttons Click Listeners (| | | |)
+  for (let i = 1; i <= 4; i++) {
+    const bar = document.getElementById(`eqBar${i}`);
+    if (bar) {
+      bar.addEventListener('click', () => {
+        switchPcMode(i);
+      });
+    }
+  }
+
+  // 2. Global Keyboard Navigation: A = Previous Mode, D = Next Mode (Circular Loop)
+  window.addEventListener('keydown', (e) => {
+    // Only in PC/Desktop view
+    if (window.innerWidth <= 900) return;
+
+    // Do NOT trigger when user is actively typing in text input, textarea, or contenteditable
+    const active = document.activeElement;
+    if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable)) {
+      return;
+    }
+
+    // Ignore if modifier keys are held
+    if (e.ctrlKey || e.altKey || e.metaKey) return;
+
+    if (e.key === 'a' || e.key === 'A') {
+      e.preventDefault();
+      switchPcMode(currentPcMode - 1);
+    } else if (e.key === 'd' || e.key === 'D') {
+      e.preventDefault();
+      switchPcMode(currentPcMode + 1);
+    }
+  });
+
+  // 3. Player Synchronizations for Lyrics, Grid, and Queue Views
+  window.onMusicoTrackChange = (track) => {
+    if (window.innerWidth > 900) {
+      if (currentPcMode === 2) {
+        renderPcLyricsView();
+      } else if (currentPcMode === 3) {
+        renderPcMasonryGridView();
+      } else if (currentPcMode === 4) {
+        renderPcQueueView();
+      }
+    }
+  };
+
+  window.onMusicoPlaybackChange = (isPlaying) => {
+    if (window.innerWidth > 900 && currentPcMode === 3) {
+      document.querySelectorAll('.masonry-card').forEach(card => {
+        const isCurrent = player.currentTrack && card.dataset.id === player.currentTrack.id;
+        card.classList.toggle('is-current', isCurrent);
+      });
+    }
+  };
+
+  window.onMusicoQueueChange = () => {
+    if (window.innerWidth > 900 && currentPcMode === 4) {
+      renderPcQueueView();
+    }
+  };
 
   // Mobile Side Controls (Black = Add Folder, Gray = Settings)
   const mobileSideAddBtn = document.getElementById('mobileSideAddBtn');
@@ -2111,6 +2515,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Start app
   applyTheme(currentTheme);
   await initLibrary();
+  player.updatePlaybackModeUI();
 
   // =========================================================================
   // SINGLE-INSTANCE WINDOW COORDINATOR (PC / Windows PWA)

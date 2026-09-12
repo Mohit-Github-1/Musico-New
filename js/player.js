@@ -13,8 +13,9 @@ class MusicPlayer {
     this.currentIndex = -1;
     this.currentTrack = null;
     this.isPlaying = false;
-    this.isShuffle = false;
-    this.repeatMode = 'all';
+    this.playbackMode = localStorage.getItem('musico-playback-mode') || 'normal';
+    this.isShuffle = this.playbackMode === 'shuffle';
+    this.repeatMode = this.playbackMode === 'repeat_one' ? 'one' : 'all';
     this.volume = 0.85;
     this.activePlaylistId = null;
     this.activePlaylistName = null;
@@ -176,6 +177,10 @@ class MusicPlayer {
       this.loadAndPlay(this.currentIndex);
     } else if (this.queue.length > 0) {
       this.loadTrack(this.currentIndex);
+    }
+
+    if (window.onMusicoQueueChange) {
+      window.onMusicoQueueChange();
     }
   }
 
@@ -344,8 +349,95 @@ class MusicPlayer {
     if (window.updateMobileUpNextUI) {
       window.updateMobileUpNextUI();
     }
+    if (window.onMusicoQueueChange) {
+      window.onMusicoQueueChange();
+    }
 
     return this.isShuffle;
+  }
+
+  /**
+   * Set 3-Mode Playback Control:
+   * 'normal'     -> Play in Line (standard list order)
+   * 'shuffle'    -> Shuffle ON (randomized queue)
+   * 'repeat_one' -> Repeat One (loop current song)
+   */
+  setPlaybackMode(mode) {
+    this.playbackMode = mode;
+    localStorage.setItem('musico-playback-mode', mode);
+
+    if (mode === 'normal') {
+      this.isShuffle = false;
+      this.repeatMode = 'all';
+      const currentTrackId = this.currentTrack ? this.currentTrack.id : null;
+      this.queue = [...this.originalQueue];
+      if (currentTrackId) {
+        const found = this.queue.findIndex(t => t.id === currentTrackId);
+        this.currentIndex = found !== -1 ? found : 0;
+      }
+    } else if (mode === 'shuffle') {
+      this.isShuffle = true;
+      this.repeatMode = 'all';
+      const currentTrackId = this.currentTrack ? this.currentTrack.id : null;
+      this.queue = this.shuffleArray([...this.originalQueue]);
+      if (currentTrackId) {
+        const found = this.queue.findIndex(t => t.id === currentTrackId);
+        this.currentIndex = found !== -1 ? found : 0;
+      }
+    } else if (mode === 'repeat_one') {
+      this.isShuffle = false;
+      this.repeatMode = 'one';
+      const currentTrackId = this.currentTrack ? this.currentTrack.id : null;
+      this.queue = [...this.originalQueue];
+      if (currentTrackId) {
+        const found = this.queue.findIndex(t => t.id === currentTrackId);
+        this.currentIndex = found !== -1 ? found : 0;
+      }
+    }
+
+    this.updatePlaybackModeUI();
+
+    if (window.updateMobileUpNextUI) {
+      window.updateMobileUpNextUI();
+    }
+    if (window.onMusicoQueueChange) {
+      window.onMusicoQueueChange();
+    }
+  }
+
+  /**
+   * Cycle through 3 playback modes in exact order:
+   * Repeat One -> Shuffle ON -> Play in Line -> Repeat One -> ...
+   */
+  cyclePlaybackMode() {
+    let nextMode = 'repeat_one';
+    if (this.playbackMode === 'repeat_one') {
+      nextMode = 'shuffle';
+    } else if (this.playbackMode === 'shuffle') {
+      nextMode = 'normal';
+    } else {
+      nextMode = 'repeat_one';
+    }
+
+    this.setPlaybackMode(nextMode);
+    return nextMode;
+  }
+
+  updatePlaybackModeUI() {
+    const mode = this.playbackMode || (this.isShuffle ? 'shuffle' : (this.repeatMode === 'one' ? 'repeat_one' : 'normal'));
+
+    const pcShuffleBtn = document.getElementById('filterShuffleBtn');
+    if (pcShuffleBtn) {
+      pcShuffleBtn.classList.toggle('active', mode !== 'normal');
+    }
+
+    const mobileBtns = [
+      document.getElementById('mobileFilterShuffleBtn'),
+      document.getElementById('mobileFullFilterShuffleBtn')
+    ];
+    mobileBtns.forEach(btn => {
+      if (btn) btn.classList.toggle('active', this.isShuffle);
+    });
   }
 
   /**
@@ -355,6 +447,9 @@ class MusicPlayer {
     this.repeatMode = mode;
     if (window.updateMobileUpNextUI) {
       window.updateMobileUpNextUI();
+    }
+    if (window.onMusicoQueueChange) {
+      window.onMusicoQueueChange();
     }
   }
 
@@ -371,6 +466,9 @@ class MusicPlayer {
     }
     if (window.updateMobileUpNextUI) {
       window.updateMobileUpNextUI();
+    }
+    if (window.onMusicoQueueChange) {
+      window.onMusicoQueueChange();
     }
     return this.repeatMode;
   }
@@ -443,6 +541,10 @@ class MusicPlayer {
       card.classList.toggle('active', isCurrent);
       card.classList.toggle('playing', isCurrent && this.isPlaying);
     });
+
+    if (window.onMusicoPlaybackChange) {
+      window.onMusicoPlaybackChange(this.isPlaying);
+    }
 
     // Toggle compact popup visibility on mobile
     const mobilePopup = document.getElementById('mobileCompactPopup');
@@ -604,6 +706,10 @@ class MusicPlayer {
 
     if (window.updateMobileUpNextUI) {
       window.updateMobileUpNextUI();
+    }
+
+    if (window.onMusicoTrackChange) {
+      window.onMusicoTrackChange(this.currentTrack);
     }
   }
 

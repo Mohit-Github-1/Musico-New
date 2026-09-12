@@ -76,6 +76,7 @@ const ID3Parser = {
               artist: id3v2.artist || fallback.artist,
               album: id3v2.album || fallback.album,
               year: id3v2.year || '',
+              lyrics: id3v2.lyrics || '',
               coverUrl: coverUrl,
               coverBlob: coverBlob,
               duration: 0
@@ -173,6 +174,7 @@ const ID3Parser = {
       artist: '',
       album: '',
       year: '',
+      lyrics: '',
       coverBlob: null
     };
 
@@ -194,6 +196,7 @@ const ID3Parser = {
         else if (frameId === 'TP1') result.artist = this.decodeTextFrame(frameBuffer);
         else if (frameId === 'TAL') result.album = this.decodeTextFrame(frameBuffer);
         else if (frameId === 'TYE') result.year = this.decodeTextFrame(frameBuffer);
+        else if (frameId === 'ULT') result.lyrics = this.decodeLyricsFrame(frameBuffer);
         else if (frameId === 'PIC' && !result.coverBlob) {
           const apic = this.decodeAPICFrame(frameBuffer);
           if (apic && apic.coverBlob) result.coverBlob = apic.coverBlob;
@@ -236,6 +239,8 @@ const ID3Parser = {
         result.album = this.decodeTextFrame(frameBuffer);
       } else if (frameId === 'TYER' || frameId === 'TDRC') {
         result.year = this.decodeTextFrame(frameBuffer);
+      } else if (frameId === 'USLT') {
+        result.lyrics = this.decodeLyricsFrame(frameBuffer);
       } else if (frameId === 'APIC' && !result.coverBlob) {
         const apic = this.decodeAPICFrame(frameBuffer);
         if (apic && apic.coverBlob) {
@@ -247,6 +252,46 @@ const ID3Parser = {
     }
 
     return result;
+  },
+
+  /**
+   * Decode USLT / ULT unsynchronized lyrics frame
+   */
+  decodeLyricsFrame(buffer) {
+    try {
+      const bytes = new Uint8Array(buffer);
+      if (bytes.length < 5) return '';
+      const encoding = bytes[0];
+      // Skip 3-byte language code (bytes[1..3])
+      let offset = 4;
+      // Skip content descriptor null-terminated string
+      if (encoding === 0 || encoding === 3) {
+        while (offset < bytes.length && bytes[offset] !== 0) offset++;
+        offset++;
+      } else {
+        while (offset < bytes.length - 1 && !(bytes[offset] === 0 && bytes[offset + 1] === 0)) {
+          offset += 2;
+        }
+        offset += 2;
+      }
+      if (offset >= bytes.length) return '';
+      const textBytes = bytes.slice(offset);
+      if (encoding === 0) {
+        let str = '';
+        for (let i = 0; i < textBytes.length; i++) {
+          if (textBytes[i] === 0) continue;
+          str += String.fromCharCode(textBytes[i]);
+        }
+        return str.trim();
+      } else if (encoding === 1 || encoding === 2) {
+        return new TextDecoder('utf-16').decode(textBytes).replace(/\0/g, '').trim();
+      } else if (encoding === 3) {
+        return new TextDecoder('utf-8').decode(textBytes).replace(/\0/g, '').trim();
+      }
+      return new TextDecoder().decode(textBytes).replace(/\0/g, '').trim();
+    } catch (e) {
+      return '';
+    }
   },
 
   /**
@@ -452,6 +497,7 @@ const ID3Parser = {
         artist: artist || 'Unknown',
         album: 'Unknown Album',
         year: '',
+        lyrics: '',
         coverUrl: null,
         coverBlob: null,
         duration: 0
@@ -463,6 +509,7 @@ const ID3Parser = {
       artist: 'Unknown',
       album: 'Unknown Album',
       year: '',
+      lyrics: '',
       coverUrl: null,
       coverBlob: null,
       duration: 0
