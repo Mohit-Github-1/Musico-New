@@ -21,7 +21,37 @@ document.addEventListener('DOMContentLoaded', async () => {
   let modalPendingTrackIds = [];
   let playlistContextMenuTargetId = null;
   let searchQuery = '';
+  let isSearchHistoryActive = false;
   let currentTheme = localStorage.getItem('musico-theme') || 'dark';
+
+  // Clear any residual search history state from previous reloads
+  if (window.history && window.history.state && window.history.state.isSearch) {
+    try {
+      window.history.replaceState(null, '');
+    } catch (e) {}
+  }
+
+  function enterSearchHistory() {
+    if (!isSearchHistoryActive) {
+      try {
+        window.history.pushState({ isSearch: true }, '');
+        isSearchHistoryActive = true;
+      } catch (e) {}
+    }
+  }
+
+  function exitSearchToAllSongs() {
+    searchQuery = '';
+    if (searchInput) searchInput.value = '';
+    if (searchOverlay) searchOverlay.classList.remove('open');
+    isSearchHistoryActive = false;
+    if (window.history && window.history.state && window.history.state.isSearch) {
+      try {
+        window.history.replaceState(null, '');
+      } catch (e) {}
+    }
+    setAllFilter();
+  }
 
   // DOM Elements
   const songsListContainer = document.getElementById('songsListContainer');
@@ -357,6 +387,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   async function renderPlaylistsView() {
     currentView = 'playlists';
     activePlaylistId = null;
+
+    // Reset search state if active
+    searchQuery = '';
+    if (searchInput) searchInput.value = '';
+    if (searchOverlay) searchOverlay.classList.remove('open');
+    if (isSearchHistoryActive) {
+      isSearchHistoryActive = false;
+      try {
+        window.history.back();
+      } catch (e) {}
+    }
+
     playlists = await fileManager.getPlaylists();
 
     // Synchronize navbar active states
@@ -695,6 +737,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     isGridView = false;
     currentView = 'all_songs';
     activePlaylistId = null;
+
+    // Reset search state & input
+    searchQuery = '';
+    document.querySelectorAll('.search-input').forEach(input => { input.value = ''; });
+    document.querySelectorAll('.search-overlay').forEach(overlay => { overlay.classList.remove('open'); });
+    if (searchInput) searchInput.value = '';
+    if (searchOverlay) searchOverlay.classList.remove('open');
+    isSearchHistoryActive = false;
+    if (window.history && window.history.state && window.history.state.isSearch) {
+      try {
+        window.history.replaceState(null, '');
+      } catch (e) {}
+    }
 
     // Synchronize navbar active states
     document.querySelectorAll('.menu-item-btn').forEach(b => b.classList.toggle('active', b.dataset.action === 'all-songs'));
@@ -1060,7 +1115,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           } else if (allTracks.length === 0) {
             showToast('Library is already empty.');
           }
-        } else if (action === 'all-songs') {
+        } else if (action === 'all-songs' || action === 'home') {
           setAllFilter();
           showToast('All Songs');
         } else if (action === 'playlists') {
@@ -1121,7 +1176,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const label = document.getElementById('viewSelectorLabel');
         if (label) label.textContent = 'Playlists';
         renderPlaylistsView();
-      } else if (action === 'all-songs') {
+      } else if (action === 'all-songs' || action === 'home') {
         const label = document.getElementById('viewSelectorLabel');
         if (label) label.textContent = 'Home / All Songs';
         setAllFilter();
@@ -1129,6 +1184,25 @@ document.addEventListener('DOMContentLoaded', async () => {
       // 'explore' and 'home' remain non-functional for now
     });
   });
+
+  const sidebarAllSongsBtn = document.getElementById('sidebarAllSongsBtn');
+  if (sidebarAllSongsBtn) {
+    sidebarAllSongsBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const label = document.getElementById('viewSelectorLabel');
+      if (label) label.textContent = 'Home / All Songs';
+      setAllFilter();
+    });
+  }
+
+  const logoBtn = document.getElementById('logoBtn');
+  if (logoBtn) {
+    logoBtn.addEventListener('click', () => {
+      const label = document.getElementById('viewSelectorLabel');
+      if (label) label.textContent = 'Home / All Songs';
+      setAllFilter();
+    });
+  }
 
   // Top Horizontal Slider: Vertical Song-List Scroll Control
   let isDraggingSlider = false;
@@ -1397,6 +1471,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (btn && searchOverlay) {
       btn.addEventListener('click', () => {
         searchOverlay.classList.add('open');
+        enterSearchHistory();
         if (searchInput) {
           searchInput.focus();
           searchInput.value = searchQuery;
@@ -1415,6 +1490,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     searchInput.addEventListener('input', (e) => {
       searchQuery = e.target.value;
       renderSongList();
+      if (searchQuery.trim().length > 0) {
+        enterSearchHistory();
+      }
     });
   }
 
@@ -1497,6 +1575,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (playlistModal && e.target === playlistModal) closePlaylistModal();
     if (contextMenu) contextMenu.classList.remove('open');
     if (playlistContextMenu) playlistContextMenu.classList.remove('open');
+  });
+
+  // Mobile Back Button / Gesture Navigation (Search Results -> Back -> All Songs)
+  window.addEventListener('popstate', () => {
+    if (isSearchHistoryActive || (searchOverlay && searchOverlay.classList.contains('open')) || searchQuery.trim().length > 0) {
+      isSearchHistoryActive = false;
+      setAllFilter();
+    }
   });
 
   // Context Menu for song options
