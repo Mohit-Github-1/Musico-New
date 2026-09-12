@@ -504,6 +504,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.querySelectorAll('.menu-item-btn').forEach(b => b.classList.toggle('active', b.dataset.action === 'all-songs'));
     const label = document.getElementById('viewSelectorLabel');
     if (label) label.textContent = 'Home / All Songs';
+    if (filterColumnBtn) filterColumnBtn.textContent = 'Column';
 
     // 1. Update 4 vertical bars active states
     for (let i = 1; i <= 4; i++) {
@@ -673,6 +674,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // PC Left side: Toggle playlist view active on player body
     const playerBody = document.querySelector('.player-body');
     if (playerBody) playerBody.classList.add('playlist-view-active');
+    if (filterColumnBtn) filterColumnBtn.textContent = 'Now Playing';
 
     // Render PC Featured Cards & Fav Section
     renderPlaylistFeaturedCards();
@@ -744,6 +746,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Switch Left side back to normal Now Playing view
     const playerBody = document.querySelector('.player-body');
     if (playerBody) playerBody.classList.remove('playlist-view-active');
+    if (filterColumnBtn) filterColumnBtn.textContent = 'Playlists';
 
     // Filter songs belonging to this playlist
     const playlistTracks = (playlist.trackIds || []).map(id => allTracks.find(t => t.id === id)).filter(Boolean);
@@ -1098,6 +1101,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const b = document.getElementById(id);
       if (b) b.classList.remove('active');
     });
+    if (filterColumnBtn) filterColumnBtn.textContent = 'Column';
 
     // PC Desktop View: Always reset to Mode 1 (List View) with 1st vertical bar active
     if (window.innerWidth > 900) {
