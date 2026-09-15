@@ -50,20 +50,28 @@ const ID3Parser = {
     try {
       const lowerName = (file.name || '').toLowerCase();
 
-      // 1. Fast ID3v2 inspection (Read 10 bytes first to get exact tag size)
-      if (file.size >= 10) {
-        const header10Buffer = await file.slice(0, 10).arrayBuffer();
-        const view10 = new DataView(header10Buffer);
-        const isID3 = String.fromCharCode(view10.getUint8(0), view10.getUint8(1), view10.getUint8(2)) === 'ID3';
+      // 1. Fast ID3v2 inspection (Scan first 2KB for ID3 header)
+      const checkLen = Math.min(file.size, 2048);
+      if (checkLen >= 10) {
+        const headerBuf = await file.slice(0, checkLen).arrayBuffer();
+        const bytes = new Uint8Array(headerBuf);
+        let id3Offset = -1;
+        for (let i = 0; i <= bytes.length - 10; i++) {
+          if (bytes[i] === 0x49 && bytes[i + 1] === 0x44 && bytes[i + 2] === 0x33) { // 'ID3'
+            id3Offset = i;
+            break;
+          }
+        }
 
-        if (isID3) {
+        if (id3Offset !== -1) {
+          const view10 = new DataView(headerBuf, id3Offset);
           const tagSize = this.readSynchsafeInt(view10, 6);
-          const fullTagSize = Math.min(file.size, 10 + tagSize);
+          const fullTagSize = Math.min(file.size, id3Offset + 10 + tagSize);
           // Slice only the exact ID3 tag buffer
-          const id3Buffer = await file.slice(0, fullTagSize).arrayBuffer();
+          const id3Buffer = await file.slice(id3Offset, fullTagSize).arrayBuffer();
           const id3v2 = this.parseID3v2(id3Buffer);
 
-          if (id3v2 && (id3v2.title || id3v2.artist || id3v2.coverBlob)) {
+          if (id3v2 && (id3v2.title || id3v2.artist || id3v2.coverBlob || id3v2.lyrics)) {
             let coverBlob = id3v2.coverBlob;
             let coverUrl = null;
             if (coverBlob) {
@@ -86,8 +94,8 @@ const ID3Parser = {
       }
 
       // 2. FLAC / OGG tags
-      if (lowerName.endsWith('.flac') || lowerName.endsWith('.ogg')) {
-        const flacBuffer = await file.slice(0, Math.min(file.size, 131072)).arrayBuffer();
+      if (lowerName.endsWith('.flac') || lowerName.endsWith('.ogg') || lowerName.endsWith('.oga') || lowerName.endsWith('.opus')) {
+        const flacBuffer = await file.slice(0, Math.min(file.size, 524288)).arrayBuffer();
         const flacMeta = this.parseFLAC(flacBuffer);
         if (flacMeta) {
           let coverBlob = flacMeta.coverBlob;
@@ -101,6 +109,7 @@ const ID3Parser = {
             artist: flacMeta.artist || fallback.artist,
             album: flacMeta.album || fallback.album,
             year: flacMeta.year || '',
+            lyrics: flacMeta.lyrics || '',
             coverUrl: coverUrl,
             coverBlob: coverBlob,
             duration: 0
@@ -108,9 +117,9 @@ const ID3Parser = {
         }
       }
 
-      // 3. M4A / MP4 tags
-      if (lowerName.endsWith('.m4a') || lowerName.endsWith('.aac') || lowerName.endsWith('.mp4')) {
-        const m4aBuffer = await file.slice(0, Math.min(file.size, 131072)).arrayBuffer();
+      // 3. M4A / MP4 / AAC tags
+      if (lowerName.endsWith('.m4a') || lowerName.endsWith('.aac') || lowerName.endsWith('.mp4') || lowerName.endsWith('.m4b')) {
+        const m4aBuffer = await file.slice(0, Math.min(file.size, 524288)).arrayBuffer();
         const m4aMeta = this.parseM4A(m4aBuffer);
         if (m4aMeta) {
           let coverBlob = m4aMeta.coverBlob;
@@ -124,6 +133,7 @@ const ID3Parser = {
             artist: m4aMeta.artist || fallback.artist,
             album: m4aMeta.album || fallback.album,
             year: m4aMeta.year || '',
+            lyrics: m4aMeta.lyrics || '',
             coverUrl: coverUrl,
             coverBlob: coverBlob,
             duration: 0
@@ -141,6 +151,7 @@ const ID3Parser = {
             artist: id3v1.artist || fallback.artist,
             album: id3v1.album || fallback.album,
             year: id3v1.year || '',
+            lyrics: '',
             coverUrl: null,
             coverBlob: null,
             duration: 0
@@ -196,7 +207,8 @@ const ID3Parser = {
         else if (frameId === 'TP1') result.artist = this.decodeTextFrame(frameBuffer);
         else if (frameId === 'TAL') result.album = this.decodeTextFrame(frameBuffer);
         else if (frameId === 'TYE') result.year = this.decodeTextFrame(frameBuffer);
-        else if (frameId === 'ULT') result.lyrics = this.decodeLyricsFrame(frameBuffer);
+        else if (frameId === 'ULT' && !result.lyrics) result.lyrics = this.decodeLyricsFrame(frameBuffer);
+        else if (frameId === 'SLT' && !result.lyrics) result.lyrics = this.decodeSYLTFrame(frameBuffer);
         else if (frameId === 'PIC' && !result.coverBlob) {
           const apic = this.decodeAPICFrame(frameBuffer);
           if (apic && apic.coverBlob) result.coverBlob = apic.coverBlob;
@@ -239,8 +251,18 @@ const ID3Parser = {
         result.album = this.decodeTextFrame(frameBuffer);
       } else if (frameId === 'TYER' || frameId === 'TDRC') {
         result.year = this.decodeTextFrame(frameBuffer);
-      } else if (frameId === 'USLT') {
+      } else if (frameId === 'USLT' && !result.lyrics) {
         result.lyrics = this.decodeLyricsFrame(frameBuffer);
+      } else if (frameId === 'SYLT' && !result.lyrics) {
+        result.lyrics = this.decodeSYLTFrame(frameBuffer);
+      } else if (frameId === 'TXXX' && !result.lyrics) {
+        const txxx = this.decodeTXXXFrame(frameBuffer);
+        if (txxx && txxx.description) {
+          const desc = txxx.description.toUpperCase().trim();
+          if (desc === 'LYRICS' || desc === 'UNSYNCEDLYRICS' || desc === 'UNSYNCED LYRICS' || desc === 'LYRIC' || desc === 'TEXT') {
+            result.lyrics = txxx.value;
+          }
+        }
       } else if (frameId === 'APIC' && !result.coverBlob) {
         const apic = this.decodeAPICFrame(frameBuffer);
         if (apic && apic.coverBlob) {
@@ -255,6 +277,37 @@ const ID3Parser = {
   },
 
   /**
+   * Universal text decoder helper
+   */
+  decodeEncodedText(bytes, encoding) {
+    if (!bytes || bytes.length === 0) return '';
+    try {
+      if (encoding === 0) {
+        return new TextDecoder('windows-1252').decode(bytes).replace(/\0/g, '').trim();
+      } else if (encoding === 1) {
+        return new TextDecoder('utf-16').decode(bytes).replace(/\0/g, '').trim();
+      } else if (encoding === 2) {
+        return new TextDecoder('utf-16be').decode(bytes).replace(/\0/g, '').trim();
+      } else if (encoding === 3) {
+        return new TextDecoder('utf-8').decode(bytes).replace(/\0/g, '').trim();
+      }
+      return new TextDecoder('utf-8').decode(bytes).replace(/\0/g, '').trim();
+    } catch (e) {
+      try {
+        return new TextDecoder('iso-8859-1').decode(bytes).replace(/\0/g, '').trim();
+      } catch (err) {
+        let str = '';
+        for (let i = 0; i < bytes.length; i++) {
+          if (bytes[i] >= 32 || bytes[i] === 10 || bytes[i] === 13 || bytes[i] === 9) {
+            str += String.fromCharCode(bytes[i]);
+          }
+        }
+        return str.trim();
+      }
+    }
+  },
+
+  /**
    * Decode USLT / ULT unsynchronized lyrics frame
    */
   decodeLyricsFrame(buffer) {
@@ -264,33 +317,107 @@ const ID3Parser = {
       const encoding = bytes[0];
       // Skip 3-byte language code (bytes[1..3])
       let offset = 4;
+
       // Skip content descriptor null-terminated string
       if (encoding === 0 || encoding === 3) {
         while (offset < bytes.length && bytes[offset] !== 0) offset++;
-        offset++;
+        if (offset < bytes.length) offset++;
+      } else {
+        let found = false;
+        for (let i = offset; i < bytes.length - 1; i++) {
+          if (bytes[i] === 0 && bytes[i + 1] === 0) {
+            offset = i + 2;
+            found = true;
+            break;
+          }
+        }
+        if (!found) {
+          offset = 4;
+        }
+      }
+
+      if (offset >= bytes.length) {
+        offset = 4;
+      }
+
+      const textBytes = bytes.slice(offset);
+      return this.decodeEncodedText(textBytes, encoding);
+    } catch (e) {
+      return '';
+    }
+  },
+
+  /**
+   * Decode SYLT synchronized lyrics frame
+   */
+  decodeSYLTFrame(buffer) {
+    try {
+      const bytes = new Uint8Array(buffer);
+      if (bytes.length < 6) return '';
+      const encoding = bytes[0];
+      let offset = 6;
+
+      if (encoding === 0 || encoding === 3) {
+        while (offset < bytes.length && bytes[offset] !== 0) offset++;
+        if (offset < bytes.length) offset++;
       } else {
         while (offset < bytes.length - 1 && !(bytes[offset] === 0 && bytes[offset + 1] === 0)) {
           offset += 2;
         }
-        offset += 2;
+        if (offset < bytes.length - 1) offset += 2;
       }
-      if (offset >= bytes.length) return '';
-      const textBytes = bytes.slice(offset);
-      if (encoding === 0) {
-        let str = '';
-        for (let i = 0; i < textBytes.length; i++) {
-          if (textBytes[i] === 0) continue;
-          str += String.fromCharCode(textBytes[i]);
+
+      const lines = [];
+      while (offset < bytes.length) {
+        let textEnd = offset;
+        if (encoding === 0 || encoding === 3) {
+          while (textEnd < bytes.length && bytes[textEnd] !== 0) textEnd++;
+          const text = this.decodeEncodedText(bytes.slice(offset, textEnd), encoding);
+          if (text) lines.push(text);
+          offset = textEnd + 1 + 4; // Skip null + 4-byte timestamp
+        } else {
+          while (textEnd < bytes.length - 1 && !(bytes[textEnd] === 0 && bytes[textEnd + 1] === 0)) {
+            textEnd += 2;
+          }
+          const text = this.decodeEncodedText(bytes.slice(offset, textEnd), encoding);
+          if (text) lines.push(text);
+          offset = textEnd + 2 + 4; // Skip double null + 4-byte timestamp
         }
-        return str.trim();
-      } else if (encoding === 1 || encoding === 2) {
-        return new TextDecoder('utf-16').decode(textBytes).replace(/\0/g, '').trim();
-      } else if (encoding === 3) {
-        return new TextDecoder('utf-8').decode(textBytes).replace(/\0/g, '').trim();
       }
-      return new TextDecoder().decode(textBytes).replace(/\0/g, '').trim();
+      return lines.join('\n');
     } catch (e) {
       return '';
+    }
+  },
+
+  /**
+   * Decode TXXX (User-defined text information) frame
+   */
+  decodeTXXXFrame(buffer) {
+    try {
+      const bytes = new Uint8Array(buffer);
+      if (bytes.length < 2) return null;
+      const encoding = bytes[0];
+      let offset = 1;
+      let descEnd = offset;
+
+      if (encoding === 0 || encoding === 3) {
+        while (descEnd < bytes.length && bytes[descEnd] !== 0) descEnd++;
+        const desc = this.decodeEncodedText(bytes.slice(offset, descEnd), encoding);
+        const valOffset = descEnd < bytes.length ? descEnd + 1 : descEnd;
+        const val = this.decodeEncodedText(bytes.slice(valOffset), encoding);
+        return { description: desc, value: val };
+      } else {
+        while (descEnd < bytes.length - 1 && !(bytes[descEnd] === 0 && bytes[descEnd + 1] === 0)) {
+          descEnd += 2;
+        }
+        const desc = this.decodeEncodedText(bytes.slice(offset, descEnd), encoding);
+        const valOffset = descEnd < bytes.length - 1 ? descEnd + 2 : descEnd;
+        const val = this.decodeEncodedText(bytes.slice(valOffset), encoding);
+        return { description: desc, value: val };
+      }
+    } catch (e) {
+      return null;
     }
   },
 
@@ -343,7 +470,7 @@ const ID3Parser = {
   },
 
   /**
-   * Parse FLAC Picture block
+   * Parse FLAC Picture & Vorbis Comments (Title, Artist, Album, Year, Lyrics)
    */
   parseFLAC(buffer) {
     try {
@@ -353,6 +480,14 @@ const ID3Parser = {
 
       let offset = 4;
       let isLast = false;
+      const result = {
+        title: '',
+        artist: '',
+        album: '',
+        year: '',
+        lyrics: '',
+        coverBlob: null
+      };
 
       while (offset < buffer.byteLength - 4 && !isLast) {
         const header = view.getUint8(offset);
@@ -361,23 +496,67 @@ const ID3Parser = {
         const blockSize = (view.getUint8(offset + 1) << 16) | (view.getUint8(offset + 2) << 8) | view.getUint8(offset + 3);
         offset += 4;
 
-        if (blockType === 6) {
-          const mimeLen = view.getUint32(offset + 4);
-          let mime = '';
-          for (let i = 0; i < mimeLen; i++) {
-            mime += String.fromCharCode(view.getUint8(offset + 8 + i));
-          }
-          const descLen = view.getUint32(offset + 8 + mimeLen);
-          const dataOffset = offset + 8 + mimeLen + 4 + descLen + 16;
-          const dataLen = view.getUint32(dataOffset - 4);
+        if (blockType === 4) {
+          // VORBIS_COMMENT block
+          try {
+            const commentView = new DataView(buffer, offset, blockSize);
+            let commentOffset = 0;
+            if (commentOffset + 4 <= blockSize) {
+              const vendorLen = commentView.getUint32(commentOffset, true);
+              commentOffset += 4 + vendorLen;
+              if (commentOffset + 4 <= blockSize) {
+                const numComments = commentView.getUint32(commentOffset, true);
+                commentOffset += 4;
+                for (let c = 0; c < numComments && commentOffset < blockSize; c++) {
+                  if (commentOffset + 4 > blockSize) break;
+                  const commentLen = commentView.getUint32(commentOffset, true);
+                  commentOffset += 4;
+                  if (commentOffset + commentLen > blockSize) break;
+                  const commentBytes = new Uint8Array(buffer, offset + commentOffset, commentLen);
+                  const commentStr = new TextDecoder('utf-8').decode(commentBytes);
+                  commentOffset += commentLen;
 
-          const imgBytes = new Uint8Array(buffer, dataOffset, dataLen);
-          const blob = new Blob([imgBytes], { type: mime || 'image/jpeg' });
-          return { 
-            coverBlob: blob
-          };
+                  const eqIdx = commentStr.indexOf('=');
+                  if (eqIdx !== -1) {
+                    const key = commentStr.substring(0, eqIdx).toUpperCase().trim();
+                    const val = commentStr.substring(eqIdx + 1).trim();
+                    if (key === 'TITLE' && !result.title) result.title = val;
+                    else if ((key === 'ARTIST' || key === 'ALBUMARTIST' || key === 'ARTISTNAME') && !result.artist) result.artist = val;
+                    else if (key === 'ALBUM' && !result.album) result.album = val;
+                    else if ((key === 'DATE' || key === 'YEAR') && !result.year) result.year = val;
+                    else if ((key === 'LYRICS' || key === 'UNSYNCEDLYRICS' || key === 'SYNCEDLYRICS' || key === 'LYRIC' || key === 'UNSYNCED LYRICS') && !result.lyrics) {
+                      result.lyrics = val;
+                    }
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            // Silently ignore comment parse errors
+          }
+        } else if (blockType === 6) {
+          // PICTURE block
+          try {
+            const mimeLen = view.getUint32(offset + 4);
+            let mime = '';
+            for (let i = 0; i < mimeLen; i++) {
+              mime += String.fromCharCode(view.getUint8(offset + 8 + i));
+            }
+            const descLen = view.getUint32(offset + 8 + mimeLen);
+            const dataOffset = offset + 8 + mimeLen + 4 + descLen + 16;
+            const dataLen = view.getUint32(dataOffset - 4);
+
+            const imgBytes = new Uint8Array(buffer, dataOffset, dataLen);
+            result.coverBlob = new Blob([imgBytes], { type: mime || 'image/jpeg' });
+          } catch (e) {
+            // Silently ignore picture parse errors
+          }
         }
         offset += blockSize;
+      }
+
+      if (result.title || result.artist || result.coverBlob || result.lyrics) {
+        return result;
       }
     } catch (e) {
       // Silently ignore
@@ -386,30 +565,81 @@ const ID3Parser = {
   },
 
   /**
-   * Parse M4A / MP4 covr atom
+   * Parse M4A / MP4 / AAC tags (Title, Artist, Album, Year, Lyrics, Cover Art)
    */
   parseM4A(buffer) {
     try {
       const bytes = new Uint8Array(buffer);
-      for (let i = 0; i < bytes.length - 8; i++) {
-        if (bytes[i] === 0x63 && bytes[i + 1] === 0x6F && bytes[i + 2] === 0x76 && bytes[i + 3] === 0x72) {
+      const result = {
+        title: '',
+        artist: '',
+        album: '',
+        year: '',
+        lyrics: '',
+        coverBlob: null
+      };
+
+      const atoms = [
+        { fourcc: [0xA9, 0x6C, 0x79, 0x72], key: 'lyrics' }, // ©lyr
+        { fourcc: [0xA9, 0x6E, 0x61, 0x6D], key: 'title' },  // ©nam
+        { fourcc: [0xA9, 0x41, 0x52, 0x54], key: 'artist' }, // ©ART
+        { fourcc: [0x61, 0x41, 0x52, 0x54], key: 'artist' }, // aART
+        { fourcc: [0xA9, 0x61, 0x6C, 0x62], key: 'album' },  // ©alb
+        { fourcc: [0xA9, 0x64, 0x61, 0x79], key: 'year' }    // ©day
+      ];
+
+      // 1. Scan for text atoms
+      for (const atom of atoms) {
+        const [b0, b1, b2, b3] = atom.fourcc;
+        for (let i = 0; i < bytes.length - 16; i++) {
+          if (bytes[i] === b0 && bytes[i + 1] === b1 && bytes[i + 2] === b2 && bytes[i + 3] === b3) {
+            let dataOffset = i + 4;
+            const searchLimit = Math.min(bytes.length - 8, i + 64);
+            while (dataOffset < searchLimit) {
+              if (bytes[dataOffset] === 0x64 && bytes[dataOffset + 1] === 0x61 && bytes[dataOffset + 2] === 0x74 && bytes[dataOffset + 3] === 0x61) { // 'data'
+                const dataLen = (bytes[dataOffset - 4] << 24) | (bytes[dataOffset - 3] << 16) | (bytes[dataOffset - 2] << 8) | bytes[dataOffset - 1];
+                const textStart = dataOffset + 12;
+                const textLen = dataLen - 16;
+                if (textLen > 0 && textStart + textLen <= bytes.length) {
+                  const textBytes = bytes.slice(textStart, textStart + textLen);
+                  const str = new TextDecoder('utf-8').decode(textBytes).trim();
+                  if (str && !result[atom.key]) {
+                    result[atom.key] = str;
+                  }
+                }
+                break;
+              }
+              dataOffset++;
+            }
+          }
+        }
+      }
+
+      // 2. Scan for 'covr' image atom
+      for (let i = 0; i < bytes.length - 16; i++) {
+        if (bytes[i] === 0x63 && bytes[i + 1] === 0x6F && bytes[i + 2] === 0x76 && bytes[i + 3] === 0x72) { // 'covr'
           let dataOffset = i + 4;
-          while (dataOffset < bytes.length - 8) {
-            if (bytes[dataOffset] === 0x64 && bytes[dataOffset + 1] === 0x61 && bytes[dataOffset + 2] === 0x74 && bytes[dataOffset + 3] === 0x61) {
+          while (dataOffset < bytes.length - 16) {
+            if (bytes[dataOffset] === 0x64 && bytes[dataOffset + 1] === 0x61 && bytes[dataOffset + 2] === 0x74 && bytes[dataOffset + 3] === 0x61) { // 'data'
               const dataLen = (bytes[dataOffset - 4] << 24) | (bytes[dataOffset - 3] << 16) | (bytes[dataOffset - 2] << 8) | bytes[dataOffset - 1];
+              const flags = (bytes[dataOffset + 4] << 24) | (bytes[dataOffset + 5] << 16) | (bytes[dataOffset + 6] << 8) | bytes[dataOffset + 7];
+              const mimeType = (flags === 14) ? 'image/png' : 'image/jpeg';
               const imgStart = dataOffset + 12;
               const imgLen = dataLen - 16;
-              if (imgStart + imgLen <= bytes.length) {
+              if (imgLen > 0 && imgStart + imgLen <= bytes.length) {
                 const imgBytes = bytes.slice(imgStart, imgStart + imgLen);
-                const blob = new Blob([imgBytes], { type: 'image/jpeg' });
-                return { 
-                  coverBlob: blob
-                };
+                result.coverBlob = new Blob([imgBytes], { type: mimeType });
               }
+              break;
             }
             dataOffset++;
           }
+          break;
         }
+      }
+
+      if (result.title || result.artist || result.coverBlob || result.lyrics) {
+        return result;
       }
     } catch (e) {
       // Silently ignore
@@ -451,20 +681,7 @@ const ID3Parser = {
       if (bytes.length === 0) return '';
       const encoding = bytes[0];
       const textBytes = bytes.slice(1);
-
-      if (encoding === 0) {
-        let str = '';
-        for (let i = 0; i < textBytes.length; i++) {
-          if (textBytes[i] === 0) break;
-          str += String.fromCharCode(textBytes[i]);
-        }
-        return str.trim();
-      } else if (encoding === 1 || encoding === 2) {
-        return new TextDecoder('utf-16').decode(textBytes).replace(/\0/g, '').trim();
-      } else if (encoding === 3) {
-        return new TextDecoder('utf-8').decode(textBytes).replace(/\0/g, '').trim();
-      }
-      return new TextDecoder().decode(textBytes).replace(/\0/g, '').trim();
+      return this.decodeEncodedText(textBytes, encoding);
     } catch (e) {
       return '';
     }
@@ -518,3 +735,4 @@ const ID3Parser = {
 };
 
 window.ID3Parser = ID3Parser;
+

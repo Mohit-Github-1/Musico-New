@@ -80,43 +80,110 @@ class FileManager {
   }
 
   /**
-   * Select a folder using Modern File System Access API with Progressive Loading
+   * Universal audio file validation
+   * Accepts standard audio extensions, MIME types, and MP3 variations (audio/mpeg, audio/mp3, etc.)
+   */
+  static isAudioFile(file) {
+    if (!file) return false;
+    const name = (file.name || '').trim();
+    const type = (file.type || '').toLowerCase().trim();
+
+    // 1. Audio extensions (case-insensitive)
+    if (/\.(mp3|wav|ogg|oga|flac|m4a|aac|opus|weba|webm|m4b|mpga|wma|aiff|alac)$/i.test(name)) {
+      return true;
+    }
+
+    // 2. Standard MIME types
+    if (type.startsWith('audio/')) {
+      return true;
+    }
+
+    // 3. Known audio MIME variations
+    const audioMimes = [
+      'audio/mpeg', 'audio/mp3', 'audio/x-mp3', 'audio/x-mpeg', 'audio/mp4',
+      'audio/aac', 'audio/wav', 'audio/x-wav', 'audio/flac', 'audio/x-flac',
+      'audio/ogg', 'audio/x-m4a', 'audio/m4a', 'audio/opus', 'audio/webm',
+      'application/ogg', 'application/x-ogg'
+    ];
+    if (audioMimes.some(m => type === m || type.includes(m))) {
+      return true;
+    }
+
+    // 4. Fallback: file has audio extension even if browser reports generic MIME
+    if (name.includes('.') && /\.(mp3|wav|ogg|flac|m4a|aac|opus|weba|webm|m4b|mpga)$/i.test(name)) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Select audio files or folders using Modern File System Access API with Progressive Loading
+   * Supports single .mp3 files, multiple .mp3 files, and folders
    * @param {Object} options Optional callbacks: onScanStart, onInitialTracksReady, onProgress, onBatchMetadataUpdated
    */
   async selectDirectory(options = {}) {
     const isMobile = window.innerWidth <= 900 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
     
-    // On PC: Use modern showDirectoryPicker if available
-    if (!isMobile && 'showDirectoryPicker' in window) {
+    // On PC: Use modern showOpenFilePicker for selecting single or multiple audio files
+    if (!isMobile && 'showOpenFilePicker' in window) {
       try {
         if (options.onScanStart) options.onScanStart();
-        const dirHandle = await window.showDirectoryPicker({ mode: 'read' });
-        const audioFiles = [];
-        await this.scanDirectoryHandle(dirHandle, audioFiles);
-        return await this.processAudioFiles(audioFiles, options);
+        const fileHandles = await window.showOpenFilePicker({
+          multiple: true,
+          types: [
+            {
+              description: 'Audio Files (*.mp3, *.wav, *.flac, *.m4a, *.aac, *.ogg, *.opus)',
+              accept: {
+                'audio/*': ['.mp3', '.wav', '.flac', '.m4a', '.aac', '.ogg', '.opus', '.weba', '.webm', '.m4b', '.mpga'],
+                'audio/mpeg': ['.mp3', '.mpga'],
+                'audio/mp3': ['.mp3'],
+                'audio/x-mp3': ['.mp3'],
+                'audio/x-mpeg': ['.mp3'],
+                'audio/mp4': ['.m4a', '.m4b'],
+                'audio/aac': ['.aac'],
+                'audio/wav': ['.wav'],
+                'audio/x-wav': ['.wav'],
+                'audio/flac': ['.flac'],
+                'audio/x-flac': ['.flac'],
+                'audio/ogg': ['.ogg', '.opus'],
+                'audio/webm': ['.weba', '.webm']
+              }
+            }
+          ]
+        });
+
+        if (fileHandles && fileHandles.length > 0) {
+          const files = await Promise.all(fileHandles.map(h => h.getFile()));
+          const validAudioFiles = files.filter(f => FileManager.isAudioFile(f));
+          return await this.processAudioFiles(validAudioFiles, options);
+        }
+        return [];
       } catch (err) {
         if (err.name === 'AbortError') return [];
-        console.warn('Directory Picker fallback:', err);
-        return this.triggerDirectoryInput(options);
+        console.warn('showOpenFilePicker error/fallback:', err);
       }
-    } else {
-      // On Mobile / Android: Use memory-safe audio file input
-      return this.triggerDirectoryInput(options);
     }
+
+    // Fallback & Mobile: Memory-safe audio file input
+    return this.triggerDirectoryInput(options);
   }
 
   /**
    * Recursively scan FileSystemDirectoryHandle (PC)
    */
   async scanDirectoryHandle(dirHandle, fileList) {
-    const audioExtensions = /\.(mp3|wav|ogg|flac|m4a|aac|opus|weba|webm)$/i;
     for await (const entry of dirHandle.values()) {
-      if (entry.kind === 'file' && audioExtensions.test(entry.name)) {
-        try {
-          const file = await entry.getFile();
-          fileList.push(file);
-        } catch (e) {
-          console.warn('Could not read file:', entry.name, e);
+      if (entry.kind === 'file') {
+        if (FileManager.isAudioFile(entry) || /\.(mp3|wav|ogg|flac|m4a|aac|opus|weba|webm|m4b|mpga)$/i.test(entry.name)) {
+          try {
+            const file = await entry.getFile();
+            if (FileManager.isAudioFile(file)) {
+              fileList.push(file);
+            }
+          } catch (e) {
+            console.warn('Could not read file:', entry.name, e);
+          }
         }
       } else if (entry.kind === 'directory') {
         try {
@@ -133,24 +200,15 @@ class FileManager {
    */
   triggerDirectoryInput(options = {}) {
     return new Promise((resolve) => {
-      const isMobile = window.innerWidth <= 900 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
       const input = document.createElement('input');
       input.type = 'file';
-      
-      // Only attach webkitdirectory on Desktop browsers
-      if (!isMobile) {
-        input.webkitdirectory = true;
-        input.directory = true;
-      }
       input.multiple = true;
-      input.accept = 'audio/*, .mp3, .wav, .flac, .m4a, .aac, .ogg, .opus, .weba, .webm';
+      input.accept = 'audio/*,audio/mpeg,audio/mp3,audio/x-mp3,audio/x-mpeg,audio/mp4,audio/aac,audio/wav,audio/x-wav,audio/flac,audio/x-flac,audio/ogg,audio/x-m4a,audio/m4a,audio/opus,audio/webm,.mp3,.wav,.flac,.m4a,.aac,.ogg,.opus,.weba,.webm,.m4b,.mpga';
 
       input.onchange = async (e) => {
         if (options.onScanStart) options.onScanStart();
         const rawFiles = e.target.files ? Array.from(e.target.files) : [];
-        const files = rawFiles.filter(f => 
-          /\.(mp3|wav|ogg|flac|m4a|aac|opus|weba|webm)$/i.test(f.name) || f.type.startsWith('audio/')
-        );
+        const files = rawFiles.filter(f => FileManager.isAudioFile(f));
         const tracks = await this.processAudioFiles(files, options);
         resolve(tracks);
       };
@@ -242,6 +300,7 @@ class FileManager {
           artist: artist,
           album: 'Unknown Album',
           year: '',
+          lyrics: '',
           duration: 0,
           formattedDuration: '0:00',
           coverUrl: 'assets/M logo for music items.png',
@@ -294,6 +353,7 @@ class FileManager {
             if (meta.artist && meta.artist !== 'Unknown') track.artist = meta.artist;
             if (meta.album && meta.album !== 'Unknown Album') track.album = meta.album;
             if (meta.year) track.year = meta.year;
+            if (meta.lyrics) track.lyrics = meta.lyrics;
             if (meta.coverBlob) {
               track.coverBlob = meta.coverBlob;
               track.coverUrl = meta.coverUrl || URL.createObjectURL(meta.coverBlob);
@@ -391,6 +451,7 @@ class FileManager {
             const track = tracks[i];
             track.audioUrl = null; // Lazy loaded on demand by player to conserve RAM
 
+            track.lyrics = track.lyrics || '';
             // Recreate cover art object URL from stored compressed coverBlob
             if (track.coverBlob) {
               track.coverUrl = URL.createObjectURL(track.coverBlob);

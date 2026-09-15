@@ -219,6 +219,21 @@ class MusicPlayer {
       }
     }
 
+    // Lazy on-demand lyrics parsing if track does not have lyrics yet
+    if (this.currentTrack && this.currentTrack.fileBlob && !this.currentTrack.lyrics && !this.currentTrack._lyricsChecked && window.ID3Parser) {
+      this.currentTrack._lyricsChecked = true;
+      const trackRef = this.currentTrack;
+      window.ID3Parser.parse(trackRef.fileBlob).then(meta => {
+        if (meta && meta.lyrics) {
+          trackRef.lyrics = meta.lyrics;
+          if (window.fileManager) window.fileManager.saveTrackToDB(trackRef);
+          if (this.currentTrack && this.currentTrack.id === trackRef.id && window.onMusicoTrackChange) {
+            window.onMusicoTrackChange(this.currentTrack);
+          }
+        }
+      }).catch(() => {});
+    }
+
     this.updateNowPlayingUI();
     this.updatePlayPauseUI();
     this.updateProgressUI();

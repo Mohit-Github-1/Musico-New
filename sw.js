@@ -1,8 +1,8 @@
 /**
- * Musico - PWA Offline Service Worker (v35)
+ * Musico - PWA Offline Service Worker (v46)
  */
 
-const CACHE_NAME = 'musico-cache-v35';
+const CACHE_NAME = 'musico-cache-v46';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -48,7 +48,11 @@ const STATIC_ASSETS = [
   './assets/icons/icon-384.png',
   './assets/icons/icon-512.png',
   './assets/icons/icon-maskable-192.png',
-  './assets/icons/icon-maskable-512.png'
+  './assets/icons/icon-maskable-512.png',
+  './assets/LibraryItems/ArtistGraphicalBg.svg',
+  './assets/LibraryItems/ArtistGraphicalFront.svg',
+  './assets/LibraryItems/ArtistGraphicalMiddleCircle.svg',
+  './assets/LibraryItems/RecorderWholeGraphicalInterface.svg'
 ];
 
 // Install Event - Pre-cache core assets safely

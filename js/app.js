@@ -342,9 +342,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     const track = player.currentTrack;
-    const lyricsText = track.lyrics ? track.lyrics.trim() : '';
+    let lyricsText = track.lyrics ? track.lyrics.trim() : '';
 
     if (!lyricsText) {
+      if (track.fileBlob && !track._lyricsChecked) {
+        track._lyricsChecked = true;
+        ID3Parser.parse(track.fileBlob).then(meta => {
+          if (meta && meta.lyrics && meta.lyrics.trim()) {
+            track.lyrics = meta.lyrics.trim();
+            if (fileManager) fileManager.saveTrackToDB(track);
+            if (player.currentTrack && player.currentTrack.id === track.id && currentPcMode === 2) {
+              renderPcLyricsView();
+            }
+          }
+        }).catch(() => {});
+      }
+
       pcLyricsContainer.innerHTML = `
         <div class="lyrics-offline-fallback">
           <div class="lyrics-offline-title">${escapeHtml(track.title)}</div>
@@ -357,8 +370,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Split lyrics by line and format
-    const lines = lyricsText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
-    if (lines.length === 0) {
+    const rawLines = lyricsText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+    const parsedLines = [];
+    let isSynced = false;
+
+    for (let i = 0; i < rawLines.length; i++) {
+      const line = rawLines[i];
+      const match = line.match(/^\[(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?\](.*)$/);
+      if (match) {
+        isSynced = true;
+        const mins = parseInt(match[1], 10);
+        const secs = parseInt(match[2], 10);
+        const ms = match[3] ? parseInt(match[3].padEnd(3, '0').slice(0, 3), 10) : 0;
+        const totalSecs = mins * 60 + secs + ms / 1000;
+        const text = match[4].trim();
+        if (text) {
+          parsedLines.push({ time: totalSecs, text });
+        }
+      } else {
+        const clean = line.replace(/^\[.*?\]\s*/g, '').trim();
+        if (clean) {
+          parsedLines.push({ time: -1, text: clean });
+        }
+      }
+    }
+
+    if (parsedLines.length === 0) {
       pcLyricsContainer.innerHTML = `
         <div class="lyrics-offline-fallback">
           <div class="lyrics-offline-title">${escapeHtml(track.title)}</div>
@@ -369,17 +406,47 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    const midIdx = Math.floor(lines.length / 2);
-    const linesHTML = lines.map((line, idx) => {
-      const isMid = idx === midIdx;
-      return `<div class="lyrics-line ${isMid ? 'highlight' : ''}">${escapeHtml(line)}</div>`;
+    const linesHTML = parsedLines.map((item, idx) => {
+      const timeAttr = item.time >= 0 ? `data-time="${item.time}"` : '';
+      return `<div class="lyrics-line" id="lyricsLine_${idx}" ${timeAttr}>${escapeHtml(item.text)}</div>`;
     }).join('');
 
     pcLyricsContainer.innerHTML = `
-      <div class="pc-lyrics-scroll-area">
+      <div class="pc-lyrics-scroll-area" id="pcLyricsScrollArea">
         ${linesHTML}
       </div>
     `;
+
+    if (isSynced) {
+      syncPcLyricsHighlight();
+    }
+  }
+
+  function syncPcLyricsHighlight() {
+    if (currentPcMode !== 2 || !player.audio || !pcLyricsContainer) return;
+    const curTime = player.audio.currentTime || 0;
+    const timedLines = pcLyricsContainer.querySelectorAll('.lyrics-line[data-time]');
+    if (!timedLines || timedLines.length === 0) return;
+
+    let activeLine = null;
+    timedLines.forEach(line => {
+      const t = parseFloat(line.dataset.time);
+      if (t <= curTime + 0.25) {
+        activeLine = line;
+      }
+    });
+
+    timedLines.forEach(line => {
+      line.classList.toggle('highlight', line === activeLine);
+    });
+
+    if (activeLine) {
+      const scrollArea = document.getElementById('pcLyricsScrollArea');
+      if (scrollArea) {
+        const top = activeLine.offsetTop - scrollArea.clientHeight / 2 + activeLine.clientHeight / 2;
+        scrollArea.scrollTo({ top, behavior: 'smooth' });
+      }
+    }
   }
 
   // Mode 3: PC 3-Column Masonry Grid View
@@ -497,14 +564,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     currentPcMode = modeNum;
 
     // Reset playlist view if active when switching PC modes
+    // PC Desktop View Mode Switching
     const playerBody = document.querySelector('.player-body');
-    if (playerBody) playerBody.classList.remove('playlist-view-active');
+    if (playerBody) {
+      playerBody.classList.remove('playlist-view-active');
+      playerBody.classList.remove('explore-view-active');
+    }
+    const exploreRightNav = document.getElementById('exploreRightNav');
+    if (exploreRightNav) exploreRightNav.style.display = 'none';
     currentView = 'all_songs';
     activePlaylistId = null;
     document.querySelectorAll('.menu-item-btn').forEach(b => b.classList.toggle('active', b.dataset.action === 'all-songs'));
     const label = document.getElementById('viewSelectorLabel');
     if (label) label.textContent = 'Home / All Songs';
+    if (filterAllBtn) filterAllBtn.textContent = 'All';
     if (filterColumnBtn) filterColumnBtn.textContent = 'Column';
+    if (filterShuffleBtn) filterShuffleBtn.textContent = 'Shuffle';
 
     // 1. Update 4 vertical bars active states
     for (let i = 1; i <= 4; i++) {
@@ -673,8 +748,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // PC Left side: Toggle playlist view active on player body
     const playerBody = document.querySelector('.player-body');
-    if (playerBody) playerBody.classList.add('playlist-view-active');
+    if (playerBody) {
+      playerBody.classList.remove('explore-view-active');
+      playerBody.classList.add('playlist-view-active');
+    }
+    if (filterAllBtn) filterAllBtn.textContent = 'All';
     if (filterColumnBtn) filterColumnBtn.textContent = 'Now Playing';
+    if (filterShuffleBtn) filterShuffleBtn.textContent = 'Shuffle';
+
+    const exploreRightNav = document.getElementById('exploreRightNav');
+    if (exploreRightNav) exploreRightNav.style.display = 'none';
+    const libraryEq = document.querySelector('.library-equalizer-bars');
+    if (libraryEq) libraryEq.style.display = 'none';
+    if (pcLyricsContainer) pcLyricsContainer.style.display = 'none';
 
     // Render PC Featured Cards & Fav Section
     renderPlaylistFeaturedCards();
@@ -745,8 +831,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Switch Left side back to normal Now Playing view
     const playerBody = document.querySelector('.player-body');
-    if (playerBody) playerBody.classList.remove('playlist-view-active');
+    if (playerBody) {
+      playerBody.classList.remove('playlist-view-active');
+      playerBody.classList.remove('explore-view-active');
+    }
+    if (filterAllBtn) filterAllBtn.textContent = 'All';
     if (filterColumnBtn) filterColumnBtn.textContent = 'Playlists';
+    if (filterShuffleBtn) filterShuffleBtn.textContent = 'Shuffle';
+
+    const exploreRightNav = document.getElementById('exploreRightNav');
+    if (exploreRightNav) exploreRightNav.style.display = 'none';
+    const libraryEq = document.querySelector('.library-equalizer-bars');
+    if (libraryEq) libraryEq.style.display = 'none';
+    if (pcLyricsContainer) pcLyricsContainer.style.display = 'none';
 
     // Filter songs belonging to this playlist
     const playlistTracks = (playlist.trackIds || []).map(id => allTracks.find(t => t.id === id)).filter(Boolean);
@@ -771,6 +868,127 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     songsListContainer.innerHTML = playlistTracks.map((track, idx) => generateSongCardHTML(track, idx, true)).join('');
     requestAnimationFrame(updateMobileScrollbarThumb);
+  }
+
+  // =========================================================================
+  // EXPLORE / LIBRARY SYSTEM VIEW CONTROLLER (PC VIEW ONLY)
+  // =========================================================================
+
+  async function renderExploreView() {
+    currentView = 'explore';
+    activePlaylistId = null;
+
+    // Reset search state if active
+    searchQuery = '';
+    if (searchInput) searchInput.value = '';
+    if (searchOverlay) searchOverlay.classList.remove('open');
+    if (isSearchHistoryActive) {
+      isSearchHistoryActive = false;
+      try {
+        window.history.back();
+      } catch (e) {}
+    }
+
+    // Synchronize navbar active states
+    document.querySelectorAll('.menu-item-btn').forEach(b => b.classList.toggle('active', b.dataset.action === 'explore'));
+    document.querySelectorAll('.mobile-nav-btn').forEach(b => b.classList.toggle('active', b.dataset.action === 'explore'));
+
+    // Update Header labels
+    const viewSelectorLabel = document.getElementById('viewSelectorLabel');
+    if (viewSelectorLabel) viewSelectorLabel.textContent = 'Notes / Learning Design';
+
+    const libraryHeading = document.querySelector('.library-heading');
+    if (libraryHeading) libraryHeading.textContent = 'Library';
+
+    // PC Left side: Toggle explore-view-active on player body
+    const playerBody = document.querySelector('.player-body');
+    if (playerBody) {
+      playerBody.classList.remove('playlist-view-active');
+      playerBody.classList.add('explore-view-active');
+    }
+
+    // Set 3 buttons text: All | Add New | Now Playing
+    if (filterAllBtn) {
+      filterAllBtn.textContent = 'All';
+      filterAllBtn.classList.add('active');
+    }
+    if (filterColumnBtn) {
+      filterColumnBtn.textContent = 'Add New';
+      filterColumnBtn.classList.remove('active');
+    }
+    if (filterShuffleBtn) {
+      filterShuffleBtn.textContent = 'Now Playing';
+      filterShuffleBtn.classList.remove('active');
+    }
+
+    // Right side: Hide songs list, equalizer bars, lyrics, and show Explore Right Nav
+    if (songsListContainer) songsListContainer.style.display = 'none';
+    if (pcLyricsContainer) pcLyricsContainer.style.display = 'none';
+    const libraryEq = document.querySelector('.library-equalizer-bars');
+    if (libraryEq) libraryEq.style.display = 'none';
+
+    const exploreRightNav = document.getElementById('exploreRightNav');
+    if (exploreRightNav) exploreRightNav.style.display = 'flex';
+
+    // Populate Dynamic Library Artwork
+    populateExploreDynamicData();
+  }
+
+  function populateExploreDynamicData() {
+    // 1. Artist random circular artwork
+    const exploreArtistImg = document.getElementById('exploreArtistImg');
+    if (exploreArtistImg) {
+      const tracksWithCover = allTracks.filter(t => t.coverUrl && !t.coverUrl.includes('M logo') && !t.coverUrl.includes('Group 4'));
+      if (tracksWithCover.length > 0) {
+        const randTrack = tracksWithCover[Math.floor(Math.random() * tracksWithCover.length)];
+        exploreArtistImg.src = randTrack.coverUrl;
+      } else if (allTracks.length > 0 && allTracks[0].coverUrl) {
+        exploreArtistImg.src = allTracks[0].coverUrl;
+      } else {
+        exploreArtistImg.src = 'assets/M logo.png';
+      }
+    }
+
+    // 2. Playlist 2 random playlist covers
+    const explorePlaylistImg1 = document.getElementById('explorePlaylistImg1');
+    const explorePlaylistImg2 = document.getElementById('explorePlaylistImg2');
+    if (explorePlaylistImg1 && explorePlaylistImg2) {
+      if (playlists && playlists.length > 0) {
+        const p1 = playlists[Math.floor(Math.random() * playlists.length)];
+        const remaining = playlists.filter(p => p.id !== p1.id);
+        const p2 = remaining.length > 0 ? remaining[Math.floor(Math.random() * remaining.length)] : p1;
+        explorePlaylistImg1.src = getRandomCoverFromPlaylist(p1);
+        explorePlaylistImg2.src = getRandomCoverFromPlaylist(p2);
+      } else {
+        const covers = allTracks.filter(t => t.coverUrl && !t.coverUrl.includes('M logo')).map(t => t.coverUrl);
+        explorePlaylistImg1.src = covers[0] || 'assets/M logo.png';
+        explorePlaylistImg2.src = covers[1] || covers[0] || 'assets/M logo.png';
+      }
+    }
+
+    // 3. Folders 4 random covers
+    const folderImgs = [
+      document.getElementById('exploreFolderImg1'),
+      document.getElementById('exploreFolderImg2'),
+      document.getElementById('exploreFolderImg3'),
+      document.getElementById('exploreFolderImg4')
+    ];
+
+    const availableCovers = allTracks.filter(t => t.coverUrl && !t.coverUrl.includes('M logo')).map(t => t.coverUrl);
+    // Shuffle available covers for variety
+    const shuffledCovers = [...availableCovers].sort(() => 0.5 - Math.random());
+
+    folderImgs.forEach((img, idx) => {
+      if (img) {
+        if (shuffledCovers.length > idx) {
+          img.src = shuffledCovers[idx];
+        } else if (availableCovers.length > 0) {
+          img.src = availableCovers[idx % availableCovers.length];
+        } else {
+          img.src = 'assets/M logo.png';
+        }
+      }
+    });
   }
 
   // Smooth scroll listener for Virtual List updates
@@ -1086,7 +1304,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // PC Left side: Show normal player body
     const playerBody = document.querySelector('.player-body');
-    if (playerBody) playerBody.classList.remove('playlist-view-active');
+    if (playerBody) {
+      playerBody.classList.remove('playlist-view-active');
+      playerBody.classList.remove('explore-view-active');
+    }
+
+    const exploreRightNav = document.getElementById('exploreRightNav');
+    if (exploreRightNav) exploreRightNav.style.display = 'none';
 
     // Reset view selector label if present
     const label = document.getElementById('viewSelectorLabel');
@@ -1101,11 +1325,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       const b = document.getElementById(id);
       if (b) b.classList.remove('active');
     });
+    if (filterAllBtn) filterAllBtn.textContent = 'All';
     if (filterColumnBtn) filterColumnBtn.textContent = 'Column';
+    if (filterShuffleBtn) filterShuffleBtn.textContent = 'Shuffle';
 
     // PC Desktop View: Always reset to Mode 1 (List View) with 1st vertical bar active
     if (window.innerWidth > 900) {
       currentPcMode = 1;
+      const libraryEq = document.querySelector('.library-equalizer-bars');
+      if (libraryEq) libraryEq.style.display = 'flex';
       for (let i = 1; i <= 4; i++) {
         const bar = document.getElementById(`eqBar${i}`);
         if (bar) {
@@ -1134,13 +1362,44 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (b) b.addEventListener('click', setAllFilter);
   });
 
-  // "Column" buttons: non-functional for now (visually unchanged)
-  ['filterColumnBtn', 'mobileFilterColumnBtn', 'mobileFullFilterColumnBtn'].forEach(id => {
+  // Middle button: Toggle between Playlist view and Now Playing view on PC Playlist page
+  if (filterColumnBtn) {
+    filterColumnBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      // PC View Only
+      if (window.innerWidth <= 900) return;
+
+      if (currentView === 'explore') {
+        return; // UI only for now
+      }
+
+      if (currentView === 'playlists') {
+        const playerBody = document.querySelector('.player-body');
+        if (!playerBody) return;
+
+        if (playerBody.classList.contains('playlist-view-active')) {
+          // Switch Left side to existing Now Playing view
+          playerBody.classList.remove('playlist-view-active');
+          filterColumnBtn.textContent = 'Playlists';
+        } else {
+          // Switch Left side back to Playlist graphical interface
+          playerBody.classList.add('playlist-view-active');
+          filterColumnBtn.textContent = 'Now Playing';
+          renderPlaylistFeaturedCards();
+          renderPlaylistFavSection();
+        }
+      } else if (currentView === 'playlist_songs') {
+        renderPlaylistsView();
+      }
+    });
+  }
+
+  // Mobile middle filter buttons keep default non-functional behavior
+  ['mobileFilterColumnBtn', 'mobileFullFilterColumnBtn'].forEach(id => {
     const b = document.getElementById(id);
     if (b) {
       b.addEventListener('click', (e) => {
         e.preventDefault();
-        // Column button functionality disabled for now
       });
     }
   });
@@ -1153,6 +1412,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (window.innerWidth <= 900) {
         toggleShuffleFilter();
         return;
+      }
+      if (currentView === 'explore') {
+        return; // UI only for now
       }
       const newMode = player.cyclePlaybackMode();
       if (newMode === 'repeat_one') {
@@ -1220,6 +1482,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     }
   };
+
+  if (player && player.audio) {
+    player.audio.addEventListener('timeupdate', () => {
+      if (window.innerWidth > 900 && currentPcMode === 2) {
+        syncPcLyricsHighlight();
+      }
+    });
+  }
 
   window.onMusicoPlaybackChange = (isPlaying) => {
     if (window.innerWidth > 900 && currentPcMode === 3) {
@@ -1571,7 +1841,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (label) label.textContent = text;
         viewDropdownMenu.classList.remove('open');
 
-        if (view === 'playlists') {
+        if (view === 'explore') {
+          renderExploreView();
+        } else if (view === 'playlists') {
           renderPlaylistsView();
         } else {
           setAllFilter();
@@ -1595,6 +1867,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else if (allTracks.length === 0) {
           showToast('Library is already empty.');
         }
+      } else if (action === 'explore') {
+        renderExploreView();
       } else if (action === 'playlists') {
         const label = document.getElementById('viewSelectorLabel');
         if (label) label.textContent = 'Playlists';
@@ -1604,7 +1878,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (label) label.textContent = 'Home / All Songs';
         setAllFilter();
       }
-      // 'explore' and 'home' remain non-functional for now
     });
   });
 
@@ -2452,12 +2725,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   window.addEventListener('drop', async (e) => {
     e.preventDefault();
     document.body.classList.remove('drag-over');
-    const files = Array.from(e.dataTransfer.files).filter(f => 
-      /\.(mp3|wav|ogg|flac|m4a|aac|opus|weba|webm)$/i.test(f.name) || f.type.startsWith('audio/')
-    );
+
+    const rawFiles = Array.from(e.dataTransfer.files || []);
+    const files = rawFiles.filter(f => FileManager.isAudioFile(f));
 
     if (files.length > 0) {
-      showToast(`Importing ${files.length} dropped file${files.length > 1 ? 's' : ''}...`);
+      showToast(`Importing ${files.length} audio file${files.length > 1 ? 's' : ''}...`);
       const imported = await fileManager.processAudioFiles(files);
       if (imported.length > 0) {
         const existingIds = new Set(allTracks.map(t => t.id));

@@ -12,7 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Contrail+One&family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
   
   <!-- App Stylesheet -->
-  <link rel="stylesheet" href="css/style.css?v=34" />
+  <link rel="stylesheet" href="css/style.css?v=52" />
 
   <!-- PWA Web App Manifest & Meta -->
   <link rel="manifest" href="manifest.json" />
@@ -77,6 +77,7 @@
             <span id="viewSelectorLabel">Home / All Songs</span>
           </button>
           <div class="view-dropdown" id="viewDropdownMenu" role="menu">
+            <button class="dropdown-item" data-view="explore" role="menuitem">Explore / Library</button>
             <button class="dropdown-item" data-view="all" role="menuitem">Home / All Songs</button>
             <button class="dropdown-item" data-view="albums" role="menuitem">Albums</button>
             <button class="dropdown-item" data-view="playlists" role="menuitem">Playlists</button>
@@ -197,6 +198,84 @@
             </div>
           </div>
         </div>
+
+        <!-- PC Graphical Explore / Library Left-Side Section -->
+        <div class="explore-left-section" id="exploreLeftSection" style="display: none;">
+          <h2 class="explore-library-heading">Library</h2>
+          
+          <div class="explore-shelves-container">
+            <!-- Row 1: Artist (Left) & Recorder (Right) -->
+            <div class="explore-shelf-row row-top">
+              <!-- Artist Graphical Interface -->
+              <div class="explore-item explore-artist-item" id="exploreArtistItem" title="Artists">
+                <div class="explore-artist-graphic">
+                  <img src="assets/LibraryItems/ArtistGraphicalBg.svg" class="explore-artist-layer layer-bg" alt="Artist Background" />
+                  <div class="explore-artist-circle-wrap">
+                    <img src="assets/M logo.png" class="explore-artist-circle-img" id="exploreArtistImg" alt="Artist Cover" />
+                  </div>
+                  <img src="assets/LibraryItems/ArtistGraphicalMiddleCircle.svg" class="explore-artist-layer layer-middle" alt="Center Dot" />
+                  <img src="assets/LibraryItems/ArtistGraphicalFront.svg" class="explore-artist-layer layer-front" alt="Front Cover" />
+                </div>
+              </div>
+
+              <!-- Recorder Graphical Interface -->
+              <div class="explore-item explore-recorder-item" id="exploreRecorderItem" title="Recorder">
+                <div class="explore-recorder-graphic">
+                  <img src="assets/LibraryItems/RecorderWholeGraphicalInterface.svg" class="explore-recorder-img" alt="Recorder" />
+                </div>
+              </div>
+            </div>
+
+            <!-- Shelf Divider Line 1 -->
+            <div class="explore-shelf-divider"></div>
+
+            <!-- Row 2: Playlist (Left) & Folders (Right) -->
+            <div class="explore-shelf-row row-bottom">
+              <!-- Playlist Graphical Interface -->
+              <div class="explore-item explore-playlist-item" id="explorePlaylistItem" title="Playlists">
+                <div class="explore-playlist-graphic">
+                  <div class="explore-playlist-line-left"></div>
+                  <div class="explore-playlist-card explore-playlist-card-vert">
+                    <img src="assets/M logo.png" class="explore-card-img" id="explorePlaylistImg1" alt="Playlist 1" />
+                  </div>
+                  <div class="explore-playlist-mid-group">
+                    <span class="explore-playlist-dots">...</span>
+                    <div class="explore-playlist-connector-wrap">
+                      <svg class="explore-playlist-connector-svg" viewBox="0 0 44 44" fill="none" preserveAspectRatio="none">
+                        <path d="M 0 3 L 6 3 L 38 41 L 44 41" stroke="currentColor" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" />
+                      </svg>
+                    </div>
+                  </div>
+                  <div class="explore-playlist-card explore-playlist-card-horiz">
+                    <img src="assets/M logo.png" class="explore-card-img" id="explorePlaylistImg2" alt="Playlist 2" />
+                  </div>
+                  <div class="explore-playlist-line-right"></div>
+                </div>
+              </div>
+
+              <!-- Folders Graphical Interface -->
+              <div class="explore-item explore-folders-item" id="exploreFoldersItem" title="Folders">
+                <div class="explore-folders-graphic">
+                  <div class="explore-folder-card folder-card-1">
+                    <img src="assets/M logo.png" class="explore-folder-img" id="exploreFolderImg1" alt="Folder 1" />
+                  </div>
+                  <div class="explore-folder-card folder-card-2">
+                    <img src="assets/M logo.png" class="explore-folder-img" id="exploreFolderImg2" alt="Folder 2" />
+                  </div>
+                  <div class="explore-folder-card folder-card-3">
+                    <img src="assets/M logo.png" class="explore-folder-img" id="exploreFolderImg3" alt="Folder 3" />
+                  </div>
+                  <div class="explore-folder-card folder-card-4">
+                    <img src="assets/M logo.png" class="explore-folder-img" id="exploreFolderImg4" alt="Folder 4" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Shelf Divider Line 2 -->
+            <div class="explore-shelf-divider"></div>
+          </div>
+        </div>
       </div>
     </main>
 
@@ -262,6 +341,18 @@
       <!-- PC Lyrics Container (Mode 2) -->
       <div class="pc-lyrics-container" id="pcLyricsContainer" style="display: none;" role="region" aria-label="Song Lyrics">
         <!-- Rendered dynamically via JavaScript -->
+      </div>
+
+      <!-- Explore / Library Right-Side Navigation (Artists, Albums, Favourite, Folders, Genre, Recorder) -->
+      <div class="explore-right-nav" id="exploreRightNav" style="display: none;" role="navigation" aria-label="Explore Library Navigation">
+        <div class="explore-nav-list">
+          <div class="explore-nav-item" data-explore-target="artists" tabindex="0" role="button">Artists</div>
+          <div class="explore-nav-item" data-explore-target="albums" tabindex="0" role="button">Albums</div>
+          <div class="explore-nav-item" data-explore-target="favourite" tabindex="0" role="button">Favourite</div>
+          <div class="explore-nav-item" data-explore-target="folders" tabindex="0" role="button">Folders</div>
+          <div class="explore-nav-item" data-explore-target="genre" tabindex="0" role="button">Genre</div>
+          <div class="explore-nav-item" data-explore-target="recorder" tabindex="0" role="button">Recorder</div>
+        </div>
       </div>
 
       <!-- Alphabetical Scroll Indicator Box (PC / Desktop View) -->
@@ -412,8 +503,8 @@
   </div>
 
   <!-- Hidden Folder & File Pickers -->
-  <input type="file" id="folderPickerInput" webkitdirectory directory multiple accept="audio/*" style="display:none;" />
-  <input type="file" id="filePickerInput" multiple accept="audio/*,.mp3,.wav,.ogg,.flac,.m4a,.aac" style="display:none;" />
+  <input type="file" id="folderPickerInput" webkitdirectory directory multiple accept="audio/*,audio/mpeg,audio/mp3,audio/x-mp3,audio/x-mpeg,audio/mp4,audio/aac,audio/wav,audio/x-wav,audio/flac,audio/x-flac,audio/ogg,audio/x-m4a,audio/m4a,audio/opus,audio/webm,.mp3,.wav,.flac,.m4a,.aac,.ogg,.opus,.weba,.webm,.m4b,.mpga" style="display:none;" />
+  <input type="file" id="filePickerInput" multiple accept="audio/*,audio/mpeg,audio/mp3,audio/x-mp3,audio/x-mpeg,audio/mp4,audio/aac,audio/wav,audio/x-wav,audio/flac,audio/x-flac,audio/ogg,audio/x-m4a,audio/m4a,audio/opus,audio/webm,.mp3,.wav,.flac,.m4a,.aac,.ogg,.opus,.weba,.webm,.m4b,.mpga" style="display:none;" />
 
   <!-- Search Modal Overlay -->
   <div class="search-overlay" id="searchOverlay" role="dialog" aria-modal="true">
@@ -540,9 +631,9 @@
   <!-- Toast Notification Message -->
   <div class="toast-message" id="toastMessage" role="status" aria-live="polite"></div>
 
-  <script src="js/id3Parser.js?v=35"></script>
-  <script src="js/fileManager.js?v=35"></script>
-  <script src="js/player.js?v=35"></script>
-  <script src="js/app.js?v=35"></script>
+  <script src="js/id3Parser.js?v=36"></script>
+  <script src="js/fileManager.js?v=36"></script>
+  <script src="js/player.js?v=36"></script>
+  <script src="js/app.js?v=36"></script>
 </body>
 </html>
